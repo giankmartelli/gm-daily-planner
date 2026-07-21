@@ -64,5 +64,15 @@ create trigger planner_days_updated_at before update on public.planner_days for 
 drop trigger if exists planner_workspaces_updated_at on public.planner_workspaces;
 create trigger planner_workspaces_updated_at before update on public.planner_workspaces for each row execute procedure public.set_updated_at();
 
-alter publication supabase_realtime add table public.planner_days;
-alter publication supabase_realtime add table public.planner_workspaces;
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'planner_days') then
+      alter publication supabase_realtime add table public.planner_days;
+    end if;
+    if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'planner_workspaces') then
+      alter publication supabase_realtime add table public.planner_workspaces;
+    end if;
+  end if;
+end;
+$$;

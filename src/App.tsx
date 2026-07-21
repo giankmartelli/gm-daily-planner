@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
@@ -8,7 +8,7 @@ import { TaskPanel } from './components/TaskPanel'
 import { localPlannerRepository as repository } from './data/plannerRepository'
 import { HOURS, todayKey, type DayData, type Goal, type Task, type ViewMode, type WorkspaceData } from './domain/models'
 import { LIMITS } from './domain/validation'
-import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './lib/supabase'
 import { reportError } from './lib/monitoring'
 import { syncService, type SyncState } from './services/syncService'
 import './index.css'
@@ -49,12 +49,14 @@ function App() {
   const [newGoal, setNewGoal] = useState('')
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null)
   const [installHelp, setInstallHelp] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(() => supabaseConfigurationMessage)
   const [user, setUser] = useState<User | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>('local')
   const [syncReady, setSyncReady] = useState(false)
+  const selectedDateRef = useRef(selectedDate)
 
+  useEffect(() => { selectedDateRef.current = selectedDate }, [selectedDate])
   useEffect(() => { const result = repository.saveDay(selectedDate, day); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [day, selectedDate])
   useEffect(() => { const result = repository.saveWorkspace(workspace); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [workspace])
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('gm-daily-planner:theme', theme); document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b0e14' : '#f7f8fa') }, [theme])
@@ -65,20 +67,24 @@ function App() {
     let active = true
     const connect = async (nextUser: User | null) => {
       if (!active) return
+      repository.setScope(nextUser?.id ?? null)
       setUser(nextUser); setSyncReady(false)
-      if (!nextUser) { syncService.unsubscribe(); setSyncState('local'); return }
+      if (!nextUser) {
+        syncService.unsubscribe(); setSyncState('local')
+        setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace())
+        return
+      }
       setSyncState('syncing')
       try {
         await syncService.synchronize(nextUser)
         if (!active) return
-        setDay(loadDayWithRecurrence(selectedDate)); setWorkspace(repository.getWorkspace()); setSyncState('synced'); setSyncReady(true)
-        syncService.subscribe(nextUser, async () => { await syncService.synchronize(nextUser); if (active) { setDay(loadDayWithRecurrence(selectedDate)); setWorkspace(repository.getWorkspace()); setSyncState('synced') } })
+        setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced'); setSyncReady(true)
+        syncService.subscribe(nextUser, async () => { await syncService.synchronize(nextUser); if (active) { setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced') } })
       } catch (error) { reportError(error, { operation: 'connect_sync' }); if (active) { setSyncState('error'); setMessage('No pudimos sincronizar. Tus cambios siguen seguros en este dispositivo.') } }
     }
-    void supabase.auth.getSession().then(({ data }) => connect(data.session?.user ?? null))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void connect(session?.user ?? null) })
     return () => { active = false; listener.subscription.unsubscribe(); syncService.unsubscribe() }
-  }, [selectedDate])
+  }, [])
   useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushDay(user.id, selectedDate).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_day' }); setSyncState('error') }) }, 700); return () => window.clearTimeout(timer) }, [day, selectedDate, syncReady, user])
   useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushWorkspace(user.id).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_workspace' }); setSyncState('error') }) }, 700); return () => window.clearTimeout(timer) }, [syncReady, user, workspace])
   useEffect(() => {
@@ -130,11 +136,11 @@ function App() {
       <div className="logo"><img src="/icons/icon-192.png" alt=""/><div><strong>GM</strong><span>Daily Planner</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú"><X size={18}/></button></div>
       <nav>{nav.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'active' : ''} onClick={() => { setView(id); setSidebarOpen(false) }}><Icon size={17}/><span>{label}</span>{id === 'tasks' && <em>{day.tasks.filter((task) => !task.completed).length}</em>}</button>)}</nav>
       <div className="sidebar-section"><p>ESPACIOS</p><button><span className="space-dot work"/>Trabajo</button><button><span className="space-dot personal"/>Personal</button><button><span className="space-dot study"/>Estudio</button></div>
-      <div className="sidebar-footer"><button onClick={install}><Download size={16}/>Instalar aplicación</button><button onClick={() => setMessage('La configuración avanzada estará disponible próximamente.')}><Settings size={16}/>Configuración</button><button className="profile" onClick={() => user ? void supabase?.auth.signOut() : setAuthOpen(true)}><span>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</span><div><strong>{user ? user.email : 'Mi espacio'}</strong><small>{user ? (syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando…' : 'Sin conexión') : isSupabaseConfigured ? 'Conectar nube' : 'Modo local'}</small></div>{user ? <LogOut size={15}/> : <ChevronRight size={15}/>}</button></div>
+      <div className="sidebar-footer"><button onClick={install}><Download size={16}/>Instalar aplicación</button><button onClick={() => setMessage('La configuración avanzada estará disponible próximamente.')}><Settings size={16}/>Configuración</button><button className="profile" onClick={() => user ? void supabase?.auth.signOut().then(({ error }) => { if (error) setMessage(`No se pudo cerrar la sesión: ${error.message}`) }) : setAuthOpen(true)}><span>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</span><div><strong>{user ? user.email : 'Mi espacio'}</strong><small>{user ? (syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando…' : 'Sin conexión') : isSupabaseConfigured ? 'Conectar nube' : 'Modo local'}</small></div>{user ? <LogOut size={15}/> : <ChevronRight size={15}/>}</button></div>
     </aside>
 
     <main className="workspace">
-      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
+      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
 
       <div className="content">
         <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>

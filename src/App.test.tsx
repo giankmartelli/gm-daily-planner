@@ -75,7 +75,7 @@ describe('GM Daily Planner Pro', () => {
   it('mantiene modo local seguro cuando Supabase no está configurado', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Conectar cuenta' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('El modo local sigue activo')
+    expect(screen.getByRole('dialog')).toHaveTextContent('Falta configurar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')
     expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeDisabled()
   })
 })

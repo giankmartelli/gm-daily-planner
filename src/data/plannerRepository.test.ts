@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { localPlannerRepository as repository } from './plannerRepository'
 
 describe('localPlannerRepository', () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => { localStorage.clear(); repository.setScope(null) })
 
   it('migra tareas de versiones anteriores sin perder datos', () => {
     localStorage.setItem('gm-daily-planner:2026-07-21', JSON.stringify({ tasks: [{ id: '1', title: 'Tarea heredada', completed: false, priority: 'alta', category: 'Trabajo' }] }))
@@ -26,5 +26,15 @@ describe('localPlannerRepository', () => {
     expect(day.tasks).toHaveLength(1)
     expect(day.tasks[0].estimatedMinutes).toBe(1440)
     expect(day.notes).toBe('')
+  })
+
+  it('aísla los datos locales de cada usuario autenticado', () => {
+    repository.setScope('usuario-a')
+    repository.saveDay('2026-07-21', { tasks: [], schedule: {}, habits: [], notes: 'Privado A' })
+    repository.setScope('usuario-b')
+    expect(repository.getDay('2026-07-21').notes).toBe('')
+    repository.saveDay('2026-07-21', { tasks: [], schedule: {}, habits: [], notes: 'Privado B' })
+    repository.setScope('usuario-a')
+    expect(repository.getDay('2026-07-21').notes).toBe('Privado A')
   })
 })
