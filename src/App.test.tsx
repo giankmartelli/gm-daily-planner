@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
+import { isSupabaseConfigured } from './lib/supabase'
 
 describe('GM Daily Planner Pro', () => {
   beforeEach(() => localStorage.clear())
@@ -72,10 +73,16 @@ describe('GM Daily Planner Pro', () => {
     await waitFor(() => expect(Object.values(localStorage).join('')).toContain('Reunión semanal'))
   })
 
-  it('mantiene modo local seguro cuando Supabase no está configurado', () => {
+  it('refleja de forma segura el estado de configuración de Supabase', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Conectar cuenta' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('Falta configurar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')
-    expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeDisabled()
+    const login = screen.getByRole('button', { name: 'Iniciar sesión' })
+    if (isSupabaseConfigured) {
+      expect(screen.getByRole('dialog')).toHaveTextContent('Accede desde cualquier dispositivo')
+      expect(login).toBeEnabled()
+    } else {
+      expect(screen.getByRole('dialog')).toHaveTextContent('Falta configurar VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY')
+      expect(login).toBeDisabled()
+    }
   })
 })
