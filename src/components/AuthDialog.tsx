@@ -17,7 +17,15 @@ export function AuthDialog({ open, onClose }: Props) {
     if (!supabase) return setStatus(supabaseConfigurationMessage)
     if (!email.includes('@') || password.length < 8) return setStatus('Usa un correo válido y una contraseña de al menos 8 caracteres.')
     setLoading(true); setStatus('')
-    const result = mode === 'login' ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password })
+    const result = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.origin,
+          },
+        })
     setLoading(false)
     if (result.error) setStatus(result.error.message || 'No se pudo completar la autenticación. Inténtalo de nuevo.')
     else if (mode === 'signup' && !result.data.session) setStatus('Revisa tu correo para confirmar la cuenta.')
