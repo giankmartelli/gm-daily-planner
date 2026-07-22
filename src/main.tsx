@@ -15,7 +15,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-if ('serviceWorker' in navigator) {
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     const registration = await navigator.serviceWorker.register('/sw.js')
     registration.addEventListener('updatefound', () => {
@@ -30,4 +30,14 @@ if ('serviceWorker' in navigator) {
     sessionStorage.setItem('gm-pwa-reloaded', '1')
     window.location.reload()
   })
+}
+
+// En desarrollo, evita que una versión PWA almacenada intercepte los módulos de Vite.
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker.getRegistrations().then((registrations) =>
+    Promise.all(registrations.map((registration) => registration.unregister())),
+  )
+  if ('caches' in window) {
+    void caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+  }
 }
