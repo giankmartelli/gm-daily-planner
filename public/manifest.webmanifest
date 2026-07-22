@@ -1,15 +1,15 @@
 {
   "name": "GM Daily Planner",
   "short_name": "GM Planner",
-  "description": "Organiza tus tareas, agenda, hábitos y notas, incluso sin conexión.",
-  "id": "/",
-  "start_url": "/",
+  "description": "Planifica con claridad, protege tu enfoque y entiende tu progreso.",
+  "id": "/app",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
-  "background_color": "#F8F9FC",
-  "theme_color": "#316BD6",
+  "background_color": "#F7F8FC",
+  "theme_color": "#3F5EFB",
   "lang": "es",
   "categories": ["productivity", "lifestyle", "utilities"],
   "icons": [
@@ -18,6 +18,6 @@
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Planificar hoy", "short_name": "Hoy", "url": "/#inicio", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Planificar hoy", "short_name": "Hoy", "url": "/app", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

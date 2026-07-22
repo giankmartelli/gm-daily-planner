@@ -3,10 +3,10 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      colors: { brand: '#5269e8' },
+      colors: { brand: 'var(--color-primary-500)' },
       fontFamily: {
-        sans: ['DM Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Manrope', 'DM Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },

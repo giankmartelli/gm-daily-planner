@@ -6,7 +6,7 @@ describe('PWA', () => {
     const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8'))
     expect(manifest.display).toBe('standalone')
     expect(manifest.icons.some((icon: { purpose?: string }) => icon.purpose === 'maskable')).toBe(true)
-    expect(manifest.start_url).toBe('/')
+    expect(manifest.start_url).toBe('/app')
   })
 
   it('mantiene caché offline y actualización de versiones', () => {

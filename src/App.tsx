@@ -7,6 +7,7 @@ import { ProductivityTimer } from './components/ProductivityTimer'
 import { SmartPlannerPanel } from './components/SmartPlannerPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { localPlannerRepository as repository } from './data/plannerRepository'
+import { colors } from './design/tokens'
 import { HOURS, todayKey, type DayData, type Goal, type Task, type ViewMode, type WorkspaceData } from './domain/models'
 import { applySmartPlan, type PlannedBlock } from './domain/smartPlanner'
 import { LIMITS } from './domain/validation'
@@ -61,7 +62,7 @@ function App() {
   useEffect(() => { selectedDateRef.current = selectedDate }, [selectedDate])
   useEffect(() => { const result = repository.saveDay(selectedDate, day); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [day, selectedDate])
   useEffect(() => { const result = repository.saveWorkspace(workspace); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [workspace])
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('gm-daily-planner:theme', theme); document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b0e14' : '#f7f8fa') }, [theme])
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('gm-daily-planner:theme', theme); document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? colors.neutral[950] : colors.neutral[50]) }, [theme])
   useEffect(() => { const handler = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPrompt) }; window.addEventListener('beforeinstallprompt', handler); return () => window.removeEventListener('beforeinstallprompt', handler) }, [])
   useEffect(() => { const handler = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('.search input')?.focus() } }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler) }, [])
   useEffect(() => {
@@ -152,7 +153,7 @@ function App() {
   return <div className="product-shell">
     <div className={`mobile-shade ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
     <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-      <div className="logo"><img src="/icons/icon-192.png" alt=""/><div><strong>GM</strong><span>Daily Planner</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú"><X size={18}/></button></div>
+      <div className="logo"><img src="/brand/logo-mark.svg" alt=""/><div><strong>GM</strong><span>Daily Planner</span></div><button onClick={() => setSidebarOpen(false)} aria-label="Cerrar menú"><X size={18}/></button></div>
       <nav>{nav.map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? 'active' : ''} onClick={() => { setView(id); setSidebarOpen(false) }}><Icon size={17}/><span>{label}</span>{id === 'tasks' && <em>{day.tasks.filter((task) => !task.completed).length}</em>}</button>)}</nav>
       <div className="sidebar-section"><p>ESPACIOS</p><button><span className="space-dot work"/>Trabajo</button><button><span className="space-dot personal"/>Personal</button><button><span className="space-dot study"/>Estudio</button></div>
       <div className="sidebar-footer"><button onClick={install}><Download size={16}/>Instalar aplicación</button><button onClick={() => setMessage('La configuración avanzada estará disponible próximamente.')}><Settings size={16}/>Configuración</button><button className="profile" onClick={() => user ? void supabase?.auth.signOut().then(({ error }) => { if (error) setMessage(`No se pudo cerrar la sesión: ${error.message}`) }) : setAuthOpen(true)}><span>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</span><div><strong>{user ? user.email : 'Mi espacio'}</strong><small>{user ? (syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando…' : 'Sin conexión') : isSupabaseConfigured ? 'Conectar nube' : 'Modo local'}</small></div>{user ? <LogOut size={15}/> : <ChevronRight size={15}/>}</button></div>

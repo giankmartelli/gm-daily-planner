@@ -1,16 +1,20 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './design/system.css'
 import './index.css'
+import './marketing/marketing.css'
 import './product.css'
 import App from './App.tsx'
 import { initializeMonitoring, Sentry } from './lib/monitoring'
+import { MarketingSite } from './marketing/MarketingSite'
 
 initializeMonitoring()
+const isProduct = window.location.pathname === '/app' || window.location.pathname.startsWith('/app/')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<main className="fatal-error"><h1>Algo salió mal</h1><p>Tus datos locales permanecen seguros. Recarga la aplicación para continuar.</p><button onClick={() => window.location.reload()}>Recargar</button></main>}>
-      <App />
+      {isProduct ? <App /> : <MarketingSite/>}
     </Sentry.ErrorBoundary>
   </StrictMode>,
 )
@@ -19,7 +23,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     // Versionar la URL evita que un cliente instalado conserve indefinidamente
     // un worker antiguo entre despliegues de Vercel.
-    const registration = await navigator.serviceWorker.register('/sw.js?v=6', { updateViaCache: 'none' })
+    const registration = await navigator.serviceWorker.register('/sw.js?v=7', { updateViaCache: 'none' })
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing
       worker?.addEventListener('statechange', () => {

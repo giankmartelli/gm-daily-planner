@@ -1,5 +1,5 @@
-const CACHE = 'gm-daily-planner-v6'
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png']
+const CACHE = 'gm-daily-planner-v7'
+const APP_SHELL = ['/', '/app', '/manifest.webmanifest', '/brand/logo-mark.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()))
