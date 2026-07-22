@@ -11,8 +11,6 @@ import { LIMITS } from './domain/validation'
 import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './lib/supabase'
 import { reportError } from './lib/monitoring'
 import { syncService, type SyncState } from './services/syncService'
-import './index.css'
-import './product.css'
 
 type Theme = 'light' | 'dark'
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
