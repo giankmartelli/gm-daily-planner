@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import './product.css'
 import './design/product-system.css'
+import './design/calendar.css'
 import type { User } from '@supabase/supabase-js'
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
@@ -121,7 +122,6 @@ function App() {
   const total = day.tasks.length + day.habits.length
   const score = total ? Math.round(((completed + habitDone) / total) * 100) : 0
   const tracked = workspace.sessions.filter((session) => session.date === selectedDate).reduce((sum, session) => sum + session.minutes, 0) + day.tasks.reduce((sum, task) => sum + task.trackedMinutes, 0)
-  const activeKeys = repository.listDayKeys()
   const streak = useMemo(() => { let count = 0; const date = new Date(); for (let i = 0; i < 366; i += 1) { const key = new Intl.DateTimeFormat('sv-SE').format(date); const data = key === selectedDate ? day : repository.getDay(key); if (!data.tasks.length || !data.tasks.every((task) => task.completed)) break; count += 1; date.setDate(date.getDate() - 1) } return count }, [day, selectedDate])
   const visibleTasks = search ? day.tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(' ')}`.toLowerCase().includes(search.toLowerCase())) : day.tasks
   const setTasks = (tasks: Task[]) => setDay((data) => {
@@ -137,6 +137,7 @@ function App() {
     setTasks([...retained, ...tasks])
   }
   const addSession = useCallback((minutes: number) => setWorkspace((data) => ({ ...data, sessions: [...data.sessions, { id: uid(), minutes, date: selectedDate }] })), [selectedDate])
+  const openNewTask = () => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }
   const applyPlan = (blocks: PlannedBlock[]) => {
     setDay((data) => ({ ...data, schedule: applySmartPlan(data.schedule, blocks) }))
     setMessage(`${blocks.length} bloque(s) añadidos a tu agenda. Guardando cambios…`)
@@ -165,7 +166,7 @@ function App() {
       <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
 
       <div className="content">
-        <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>
+        {view !== 'calendar' && <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={openNewTask}><Plus size={16}/>Nueva tarea</button></div>}
 
         {view === 'dashboard' && <>
           <SmartPlannerPanel tasks={day.tasks} schedule={day.schedule} date={selectedDate} onApply={applyPlan}/>
@@ -174,7 +175,7 @@ function App() {
           <div className="dashboard-bottom"><HabitsPanel day={day} setDay={setDay} value={newHabit} setValue={setNewHabit} onAdd={addHabit}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>
         </>}
         {view === 'tasks' && <div className="single-column"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><SchedulePanel day={day} setDay={setDay}/></div>}
-        {view === 'calendar' && <div className="calendar-layout"><CalendarPanel selected={selectedDate} activeKeys={activeKeys} onSelect={selectDate}/><SchedulePanel day={day} setDay={setDay}/></div>}
+        {view === 'calendar' && <CalendarPanel selected={selectedDate} day={day} getDay={(key) => key === selectedDate ? day : repository.getDay(key)} onSelect={selectDate} onSchedule={(hour, value) => setDay((data) => ({ ...data, schedule: { ...data.schedule, [hour]: value } }))} onNewTask={openNewTask}/>}
         {view === 'focus' && <div className="focus-layout"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>}
         {view === 'reports' && <Reports selectedDate={selectedDate}/>} 
       </div>
