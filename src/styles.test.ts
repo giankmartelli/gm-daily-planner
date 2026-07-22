@@ -24,9 +24,14 @@ describe('pipeline de estilos', () => {
   it('centraliza los fundamentos visuales en el design system', () => {
     const tokens = readFileSync('src/design/tokens.ts', 'utf8')
     const product = readFileSync('src/product.css', 'utf8')
+    const premium = readFileSync('src/design/product-system.css', 'utf8')
+    const colors = readFileSync('src/design/colors.ts', 'utf8')
     expect(tokens).toContain('colors')
     expect(tokens).toContain('spacing')
     expect(product).not.toMatch(/#[0-9a-f]{3,8}/i)
+    expect(premium).not.toMatch(/#[0-9a-f]{3,8}/i)
+    expect(colors).toContain("500: '#4F6BFF'")
+    expect(colors).toContain("500: '#7C5CFF'")
   })
 
   it('permite los estilos inyectados por Vite sin abrir la CSP a scripts inline', () => {
