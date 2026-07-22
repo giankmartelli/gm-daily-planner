@@ -77,14 +77,21 @@ function App() {
         await syncService.synchronize(nextUser)
         if (!active) return
         setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced'); setSyncReady(true)
-        syncService.subscribe(nextUser, async () => { await syncService.synchronize(nextUser); if (active) { setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced') } })
+        syncService.subscribe(nextUser, () => {
+          void syncService.synchronize(nextUser).then(() => {
+            if (active) { setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced') }
+          }).catch((error) => {
+            reportError(error, { operation: 'realtime_sync' })
+            if (active) { setSyncState('error'); setMessage('No pudimos actualizar desde la nube. Tus cambios locales permanecen guardados.') }
+          })
+        })
       } catch (error) { reportError(error, { operation: 'connect_sync' }); if (active) { setSyncState('error'); setMessage('No pudimos sincronizar. Tus cambios siguen seguros en este dispositivo.') } }
     }
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void connect(session?.user ?? null) })
     return () => { active = false; listener.subscription.unsubscribe(); syncService.unsubscribe() }
   }, [])
-  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushDay(user.id, selectedDate).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_day' }); setSyncState('error') }) }, 700); return () => window.clearTimeout(timer) }, [day, selectedDate, syncReady, user])
-  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushWorkspace(user.id).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_workspace' }); setSyncState('error') }) }, 700); return () => window.clearTimeout(timer) }, [syncReady, user, workspace])
+  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushDay(user.id, selectedDate).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_day' }); setSyncState('error'); setMessage('No pudimos guardar los cambios en la nube. La tarea permanece segura en este dispositivo.') }) }, 700); return () => window.clearTimeout(timer) }, [day, selectedDate, syncReady, user])
+  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushWorkspace(user.id).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_workspace' }); setSyncState('error'); setMessage('No pudimos guardar los datos generales en la nube. Permanecen seguros en este dispositivo.') }) }, 700); return () => window.clearTimeout(timer) }, [syncReady, user, workspace])
   useEffect(() => {
     const checkReminders = () => {
       if (selectedDate !== todayKey() || !('Notification' in window) || Notification.permission !== 'granted') return
@@ -109,7 +116,12 @@ function App() {
   const activeKeys = repository.listDayKeys()
   const streak = useMemo(() => { let count = 0; const date = new Date(); for (let i = 0; i < 366; i += 1) { const key = new Intl.DateTimeFormat('sv-SE').format(date); const data = key === selectedDate ? day : repository.getDay(key); if (!data.tasks.length || !data.tasks.every((task) => task.completed)) break; count += 1; date.setDate(date.getDate() - 1) } return count }, [day, selectedDate])
   const visibleTasks = search ? day.tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(' ')}`.toLowerCase().includes(search.toLowerCase())) : day.tasks
-  const setTasks = (tasks: Task[]) => setDay((data) => ({ ...data, tasks }))
+  const setTasks = (tasks: Task[]) => setDay((data) => {
+    const next = { ...data, tasks }
+    const result = repository.saveDay(selectedDate, next)
+    if (!result.ok) setMessage(result.message)
+    return next
+  })
   const updateVisibleTasks = (tasks: Task[]) => {
     if (!search) return setTasks(tasks)
     const visibleIds = new Set(visibleTasks.map((task) => task.id))

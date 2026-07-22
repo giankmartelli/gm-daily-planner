@@ -37,4 +37,21 @@ describe('localPlannerRepository', () => {
     repository.setScope('usuario-a')
     expect(repository.getDay('2026-07-21').notes).toBe('Privado A')
   })
+
+  it('mantiene una tarea nueva después de recibir una sincronización remota obsoleta', async () => {
+    repository.setScope('usuario-sincronizado')
+    const date = '2026-07-21'
+    const localUpdatedAt = '2026-07-21T18:00:00.000Z'
+    repository.saveDay(date, {
+      tasks: [{ id: 'task-local', title: 'No debe desaparecer', completed: false, priority: 'alta', category: 'Trabajo', tags: [], subtasks: [], recurrence: 'ninguna', estimatedMinutes: 25, trackedMinutes: 0, createdAt: localUpdatedAt }],
+      schedule: {}, habits: [], notes: '',
+    }, localUpdatedAt)
+
+    await Promise.resolve()
+    const result = repository.mergeRemoteDay(date, { tasks: [], schedule: {}, habits: [], notes: '' }, '2026-07-21T17:59:00.000Z')
+
+    expect(result).toBe('local')
+    expect(repository.getDay(date).tasks).toHaveLength(1)
+    expect(repository.getDay(date).tasks[0].title).toBe('No debe desaparecer')
+  })
 })
