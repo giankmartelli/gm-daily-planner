@@ -1,4 +1,4 @@
-const CACHE = 'gm-daily-planner-v4'
+const CACHE = 'gm-daily-planner-v5'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png']
 
 self.addEventListener('install', (event) => {
@@ -12,7 +12,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) return
   event.respondWith(
-    fetch(event.request).then((response) => {
+    fetch(event.request, { cache: event.request.mode === 'navigate' ? 'no-store' : 'default' }).then((response) => {
       if (response.ok) caches.open(CACHE).then((cache) => cache.put(event.request, response.clone()))
       return response
     }).catch(async () => {

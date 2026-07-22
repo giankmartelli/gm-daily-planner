@@ -17,13 +17,16 @@ createRoot(document.getElementById('root')!).render(
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
-    const registration = await navigator.serviceWorker.register('/sw.js')
+    // Versionar la URL evita que un cliente instalado conserve indefinidamente
+    // un worker antiguo entre despliegues de Vercel.
+    const registration = await navigator.serviceWorker.register('/sw.js?v=5', { updateViaCache: 'none' })
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing
       worker?.addEventListener('statechange', () => {
         if (worker.state === 'installed' && navigator.serviceWorker.controller) worker.postMessage('SKIP_WAITING')
       })
     })
+    await registration.update()
   })
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (sessionStorage.getItem('gm-pwa-reloaded')) return

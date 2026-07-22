@@ -7,6 +7,16 @@ import { supabase } from '../lib/supabase'
 export type SyncState = 'local' | 'syncing' | 'synced' | 'error'
 type DayRow = { date: string; data: unknown; updated_at: string }
 type WorkspaceRow = { data: unknown; updated_at: string }
+export type DaySyncReceipt = { userId: string; date: string; taskCount: number; updatedAt: string; version: number }
+
+function sameDay(left: unknown, right: unknown) {
+  return JSON.stringify(sanitizeDay(left)) === JSON.stringify(sanitizeDay(right))
+}
+
+function syncFailure(operation: string, detail: unknown) {
+  const message = detail && typeof detail === 'object' && 'message' in detail ? String(detail.message) : String(detail)
+  return new Error(`${operation}: ${message}`)
+}
 
 class SyncService {
   private channel: RealtimeChannel | null = null
@@ -36,29 +46,56 @@ class SyncService {
   }
 
   async pushDay(userId: string, date: string) {
-    if (!supabase) return
+    if (!supabase) throw new Error('push_day: Supabase no está configurado')
     const local = localPlannerRepository.getDayRecord(date)
-    if (!local) return
-    const { data, error } = await supabase.from('planner_days')
+    if (!local) throw new Error(`push_day: no existe un registro local para ${date}`)
+    const { data: upserted, error } = await supabase.from('planner_days')
       .upsert({ user_id: userId, date, data: local.data }, { onConflict: 'user_id,date' })
-      .select('updated_at')
+      .select('user_id,date,data,updated_at,version')
       .single()
-    if (error) throw error
+    if (error) throw syncFailure('push_day upsert', error)
+    if (!upserted || upserted.user_id !== userId || upserted.date !== date || !sameDay(upserted.data, local.data)) {
+      throw new Error('push_day upsert: Supabase devolvió una fila incompleta o distinta del payload local')
+    }
+
+    const { data: verified, error: verifyError } = await supabase.from('planner_days')
+      .select('user_id,date,data,updated_at,version')
+      .eq('user_id', userId)
+      .eq('date', date)
+      .single()
+    if (verifyError) throw syncFailure('push_day readback', verifyError)
+    if (!verified || verified.user_id !== userId || verified.date !== date || !sameDay(verified.data, local.data)) {
+      throw new Error('push_day readback: la fila leída no contiene la tarea recién guardada')
+    }
+
     const current = localPlannerRepository.getDayRecord(date)
-    if (current?.updatedAt === local.updatedAt && data?.updated_at) localPlannerRepository.saveDay(date, current.data, data.updated_at)
+    if (current?.updatedAt === local.updatedAt && verified.updated_at) localPlannerRepository.saveDay(date, current.data, verified.updated_at)
+    const receipt: DaySyncReceipt = { userId: verified.user_id, date: verified.date, taskCount: sanitizeDay(verified.data).tasks.length, updatedAt: verified.updated_at, version: verified.version }
+    console.info('[GM sync] pushDay verificado', receipt)
+    return receipt
   }
 
   async pushWorkspace(userId: string) {
-    if (!supabase) return
+    if (!supabase) throw new Error('push_workspace: Supabase no está configurado')
     const local = localPlannerRepository.getWorkspaceRecord()
-    if (!local) return
-    const { data, error } = await supabase.from('planner_workspaces')
+    if (!local) throw new Error('push_workspace: no existe un registro local')
+    const { data: upserted, error } = await supabase.from('planner_workspaces')
       .upsert({ user_id: userId, data: local.data }, { onConflict: 'user_id' })
-      .select('updated_at')
+      .select('user_id,data,updated_at,version')
       .single()
-    if (error) throw error
+    if (error) throw syncFailure('push_workspace upsert', error)
+    if (!upserted || upserted.user_id !== userId) throw new Error('push_workspace upsert: Supabase devolvió una fila inválida')
+    const { data: verified, error: verifyError } = await supabase.from('planner_workspaces')
+      .select('user_id,data,updated_at,version')
+      .eq('user_id', userId)
+      .single()
+    if (verifyError) throw syncFailure('push_workspace readback', verifyError)
+    if (!verified || verified.user_id !== userId || JSON.stringify(sanitizeWorkspace(verified.data)) !== JSON.stringify(local.data)) {
+      throw new Error('push_workspace readback: la fila leída no coincide con el payload local')
+    }
     const current = localPlannerRepository.getWorkspaceRecord()
-    if (current?.updatedAt === local.updatedAt && data?.updated_at) localPlannerRepository.saveWorkspace(current.data, data.updated_at)
+    if (current?.updatedAt === local.updatedAt && verified.updated_at) localPlannerRepository.saveWorkspace(current.data, verified.updated_at)
+    console.info('[GM sync] pushWorkspace verificado', { userId: verified.user_id, updatedAt: verified.updated_at, version: verified.version })
   }
 
   subscribe(user: User, onRemoteChange: () => void) {

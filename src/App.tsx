@@ -53,6 +53,8 @@ function App() {
   const [syncState, setSyncState] = useState<SyncState>('local')
   const [syncReady, setSyncReady] = useState(false)
   const selectedDateRef = useRef(selectedDate)
+  const connectionVersionRef = useRef(0)
+  const markSyncSuccess = () => setSyncState((current) => current === 'error' ? 'error' : 'synced')
 
   useEffect(() => { selectedDateRef.current = selectedDate }, [selectedDate])
   useEffect(() => { const result = repository.saveDay(selectedDate, day); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [day, selectedDate])
@@ -64,6 +66,7 @@ function App() {
     if (!supabase) return
     let active = true
     const connect = async (nextUser: User | null) => {
+      const connectionVersion = ++connectionVersionRef.current
       if (!active) return
       repository.setScope(nextUser?.id ?? null)
       setUser(nextUser); setSyncReady(false)
@@ -75,14 +78,14 @@ function App() {
       setSyncState('syncing')
       try {
         await syncService.synchronize(nextUser)
-        if (!active) return
+        if (!active || connectionVersion !== connectionVersionRef.current) return
         setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced'); setSyncReady(true)
         syncService.subscribe(nextUser, () => {
           void syncService.synchronize(nextUser).then(() => {
-            if (active) { setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); setSyncState('synced') }
+            if (active && connectionVersion === connectionVersionRef.current) { setDay(loadDayWithRecurrence(selectedDateRef.current)); setWorkspace(repository.getWorkspace()); markSyncSuccess() }
           }).catch((error) => {
             reportError(error, { operation: 'realtime_sync' })
-            if (active) { setSyncState('error'); setMessage('No pudimos actualizar desde la nube. Tus cambios locales permanecen guardados.') }
+            if (active && connectionVersion === connectionVersionRef.current) { setSyncState('error'); setMessage('No pudimos actualizar desde la nube. Tus cambios locales permanecen guardados.') }
           })
         })
       } catch (error) { reportError(error, { operation: 'connect_sync' }); if (active) { setSyncState('error'); setMessage('No pudimos sincronizar. Tus cambios siguen seguros en este dispositivo.') } }
@@ -90,8 +93,8 @@ function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void connect(session?.user ?? null) })
     return () => { active = false; listener.subscription.unsubscribe(); syncService.unsubscribe() }
   }, [])
-  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushDay(user.id, selectedDate).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_day' }); setSyncState('error'); setMessage('No pudimos guardar los cambios en la nube. La tarea permanece segura en este dispositivo.') }) }, 700); return () => window.clearTimeout(timer) }, [day, selectedDate, syncReady, user])
-  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushWorkspace(user.id).then(() => setSyncState('synced')).catch((error) => { reportError(error, { operation: 'push_workspace' }); setSyncState('error'); setMessage('No pudimos guardar los datos generales en la nube. Permanecen seguros en este dispositivo.') }) }, 700); return () => window.clearTimeout(timer) }, [syncReady, user, workspace])
+  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushDay(user.id, selectedDate).then(markSyncSuccess).catch((error) => { reportError(error, { operation: 'push_day' }); setSyncState('error'); setMessage(`No pudimos guardar los cambios en la nube. La tarea permanece en este dispositivo. ${error instanceof Error ? error.message : ''}`) }) }, 700); return () => window.clearTimeout(timer) }, [day, selectedDate, syncReady, user])
+  useEffect(() => { if (!user || !syncReady) return; const timer = window.setTimeout(() => { setSyncState('syncing'); void syncService.pushWorkspace(user.id).then(markSyncSuccess).catch((error) => { reportError(error, { operation: 'push_workspace' }); setSyncState('error'); setMessage(`No pudimos guardar los datos generales en la nube. Permanecen en este dispositivo. ${error instanceof Error ? error.message : ''}`) }) }, 700); return () => window.clearTimeout(timer) }, [syncReady, user, workspace])
   useEffect(() => {
     const checkReminders = () => {
       if (selectedDate !== todayKey() || !('Notification' in window) || Notification.permission !== 'granted') return

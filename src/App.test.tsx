@@ -20,6 +20,22 @@ describe('GM Daily Planner Pro', () => {
     await waitFor(() => expect(Object.values(localStorage).join('')).toContain('Preparar lanzamiento'))
   })
 
+  it('conserva una tarea al cambiar de vista y simular una recarga', async () => {
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('Nueva tarea'), { target: { value: 'Prueba persistencia 2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inicio' }))
+    expect(screen.getByText('Prueba persistencia 2')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Mis tareas/ }))
+    expect(screen.getByText('Prueba persistencia 2')).toBeInTheDocument()
+    await waitFor(() => expect(Object.values(localStorage).join('')).toContain('Prueba persistencia 2'))
+
+    cleanup()
+    render(<App />)
+    expect(screen.getByText('Prueba persistencia 2')).toBeInTheDocument()
+  })
+
   it('crea hábitos y guarda notas', async () => {
     render(<App />)
     fireEvent.change(screen.getByLabelText('Nuevo hábito'), { target: { value: 'Leer 20 minutos' } })
