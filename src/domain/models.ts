@@ -1,6 +1,9 @@
 export type Priority = 'alta' | 'media' | 'baja'
 export type Category = 'Trabajo' | 'Personal' | 'Estudio' | 'Salud' | 'Otras'
 export type Recurrence = 'ninguna' | 'diaria' | 'semanal' | 'mensual'
+export type EnergyLevel = 'baja' | 'media' | 'alta'
+export type Flexibility = 'fija' | 'flexible'
+export type PreferredPeriod = 'mañana' | 'tarde' | 'noche' | 'cualquiera'
 export type ViewMode = 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'reports'
 
 export type Subtask = { id: string; title: string; completed: boolean }
@@ -14,7 +17,11 @@ export type Task = {
   subtasks: Subtask[]
   recurrence: Recurrence
   reminder?: string
-  estimatedMinutes: number
+  estimatedMinutes?: number
+  dueDate?: string
+  energyLevel?: EnergyLevel
+  flexibility?: Flexibility
+  preferredPeriod?: PreferredPeriod
   trackedMinutes: number
   createdAt: string
 }
@@ -42,7 +49,11 @@ export function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title'>): 
     subtasks: raw.subtasks ?? [],
     recurrence: raw.recurrence ?? 'ninguna',
     reminder: raw.reminder,
-    estimatedMinutes: raw.estimatedMinutes ?? 25,
+    estimatedMinutes: raw.estimatedMinutes ?? 30,
+    dueDate: raw.dueDate,
+    energyLevel: raw.energyLevel ?? 'media',
+    flexibility: raw.flexibility ?? 'flexible',
+    preferredPeriod: raw.preferredPeriod ?? 'cualquiera',
     trackedMinutes: raw.trackedMinutes ?? 0,
     createdAt: raw.createdAt ?? new Date().toISOString(),
   }

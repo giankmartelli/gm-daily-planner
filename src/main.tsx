@@ -19,7 +19,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     // Versionar la URL evita que un cliente instalado conserve indefinidamente
     // un worker antiguo entre despliegues de Vercel.
-    const registration = await navigator.serviceWorker.register('/sw.js?v=5', { updateViaCache: 'none' })
+    const registration = await navigator.serviceWorker.register('/sw.js?v=6', { updateViaCache: 'none' })
     registration.addEventListener('updatefound', () => {
       const worker = registration.installing
       worker?.addEventListener('statechange', () => {

@@ -3,6 +3,8 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
+import { localPlannerRepository as repository } from './data/plannerRepository'
+import { todayKey } from './domain/models'
 import { isSupabaseConfigured } from './lib/supabase'
 
 describe('GM Daily Planner Pro', () => {
@@ -87,6 +89,33 @@ describe('GM Daily Planner Pro', () => {
     fireEvent.change(agenda, { target: { value: 'Reunión semanal' } })
     expect(agenda).toHaveAttribute('maxlength', '160')
     await waitFor(() => expect(Object.values(localStorage).join('')).toContain('Reunión semanal'))
+  })
+
+  it('no altera la agenda antes de confirmar una propuesta inteligente', () => {
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('Nueva tarea'), { target: { value: 'Bloque premium' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Planificar mi día' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generar propuesta' }))
+    expect(screen.getAllByText('Bloque premium')).toHaveLength(2)
+    expect(Object.values(repository.getDay(todayKey()).schedule)).not.toContain('Bloque premium')
+  })
+
+  it('aplica la propuesta y la conserva tras recargar y cambiar de vista', async () => {
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('Nueva tarea'), { target: { value: 'Agenda persistente premium' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Planificar mi día' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Generar propuesta' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Aplicar a mi agenda' }))
+    await waitFor(() => expect(Object.values(repository.getDay(todayKey()).schedule)).toContain('Agenda persistente premium'))
+
+    fireEvent.click(screen.getByRole('button', { name: /Mis tareas/ }))
+    expect(screen.getByDisplayValue('Agenda persistente premium')).toBeInTheDocument()
+    cleanup()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /Mis tareas/ }))
+    expect(screen.getByDisplayValue('Agenda persistente premium')).toBeInTheDocument()
   })
 
   it('refleja de forma segura el estado de configuración de Supabase', () => {

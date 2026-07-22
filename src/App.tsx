@@ -4,9 +4,11 @@ import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Clou
 import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
 import { ProductivityTimer } from './components/ProductivityTimer'
+import { SmartPlannerPanel } from './components/SmartPlannerPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { localPlannerRepository as repository } from './data/plannerRepository'
 import { HOURS, todayKey, type DayData, type Goal, type Task, type ViewMode, type WorkspaceData } from './domain/models'
+import { applySmartPlan, type PlannedBlock } from './domain/smartPlanner'
 import { LIMITS } from './domain/validation'
 import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './lib/supabase'
 import { reportError } from './lib/monitoring'
@@ -132,6 +134,10 @@ function App() {
     setTasks([...retained, ...tasks])
   }
   const addSession = useCallback((minutes: number) => setWorkspace((data) => ({ ...data, sessions: [...data.sessions, { id: uid(), minutes, date: selectedDate }] })), [selectedDate])
+  const applyPlan = (blocks: PlannedBlock[]) => {
+    setDay((data) => ({ ...data, schedule: applySmartPlan(data.schedule, blocks) }))
+    setMessage(`${blocks.length} bloque(s) añadidos a tu agenda. Guardando cambios…`)
+  }
 
   const install = async () => { if (!installPrompt) return setInstallHelp(true); await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null) }
   const addHabit = (event: FormEvent) => { event.preventDefault(); const name = newHabit.trim(); if (!name) return setMessage('Escribe un nombre para el hábito.'); if (day.habits.some((habit) => habit.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return setMessage('Ese hábito ya existe.'); setDay((data) => ({ ...data, habits: [...data.habits, { id: uid(), name, completed: false }] })); setNewHabit(''); setMessage('Hábito creado.') }
@@ -159,6 +165,7 @@ function App() {
         <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>
 
         {view === 'dashboard' && <>
+          <SmartPlannerPanel tasks={day.tasks} schedule={day.schedule} date={selectedDate} onApply={applyPlan}/>
           <section className="metric-grid"><article><span className="metric-icon blue"><CheckCircle2/></span><div><p>Completadas</p><strong>{completed}<small> / {day.tasks.length}</small></strong><em>tareas de hoy</em></div></article><article><span className="metric-icon violet"><TrendingUp/></span><div><p>Productividad</p><strong>{score}%</strong><em>{score >= 70 ? 'Excelente ritmo' : 'Listo para avanzar'}</em></div></article><article><span className="metric-icon orange"><Zap/></span><div><p>Racha actual</p><strong>{streak}<small> días</small></strong><em>La constancia suma</em></div></article><article><span className="metric-icon green"><Clock3/></span><div><p>Tiempo enfocado</p><strong>{Math.floor(tracked / 60)}<small>h</small> {tracked % 60}<small>m</small></strong><em>registrado hoy</em></div></article></section>
           <div className="dashboard-grid"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><div className="right-rail"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/></div></div>
           <div className="dashboard-bottom"><HabitsPanel day={day} setDay={setDay} value={newHabit} setValue={setNewHabit} onAdd={addHabit}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>
@@ -184,7 +191,8 @@ function GoalPanel({ goals, onChange, onAdd, value, setValue }: { goals: Goal[];
 }
 
 function SchedulePanel({ day, setDay }: { day: DayData; setDay: React.Dispatch<React.SetStateAction<DayData>> }) {
-  return <section className="panel schedule-pro"><div className="panel-title"><div><span className="icon-box blue"><Clock3 size={17}/></span><div><h2>Agenda</h2><p>Bloques de tiempo editables</p></div></div></div><div>{HOURS.map((hour) => <label key={hour}><time>{hour}</time><i/><input aria-label={`Actividad de las ${hour}`} maxLength={LIMITS.schedule} value={day.schedule[hour] ?? ''} onChange={(e) => setDay((data) => ({ ...data, schedule: { ...data.schedule, [hour]: e.target.value } }))} placeholder="Añadir bloque…"/></label>)}</div></section>
+  const times = [...new Set([...HOURS, ...Object.keys(day.schedule)])].sort()
+  return <section className="panel schedule-pro"><div className="panel-title"><div><span className="icon-box blue"><Clock3 size={17}/></span><div><h2>Agenda</h2><p>Bloques de tiempo editables</p></div></div></div><div>{times.map((hour) => <label key={hour}><time>{hour}</time><i/><input aria-label={`Actividad de las ${hour}`} maxLength={LIMITS.schedule} value={day.schedule[hour] ?? ''} onChange={(e) => setDay((data) => ({ ...data, schedule: { ...data.schedule, [hour]: e.target.value } }))} placeholder="Añadir bloque…"/></label>)}</div></section>
 }
 
 function SummaryPanel({ day, setDay, score, tracked }: { day: DayData; setDay: React.Dispatch<React.SetStateAction<DayData>>; score: number; tracked: number }) {

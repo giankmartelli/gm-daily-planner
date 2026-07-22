@@ -11,7 +11,10 @@ describe('localPlannerRepository', () => {
     expect(task.title).toBe('Tarea heredada')
     expect(task.subtasks).toEqual([])
     expect(task.recurrence).toBe('ninguna')
-    expect(task.estimatedMinutes).toBe(25)
+    expect(task.estimatedMinutes).toBe(30)
+    expect(task.energyLevel).toBe('media')
+    expect(task.flexibility).toBe('flexible')
+    expect(task.preferredPeriod).toBe('cualquiera')
   })
 
   it('persiste objetivos y sesiones de enfoque', () => {
