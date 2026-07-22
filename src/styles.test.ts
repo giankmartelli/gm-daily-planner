@@ -13,10 +13,11 @@ describe('pipeline de estilos', () => {
   it('carga las capas de Tailwind antes del diseño del producto', () => {
     const index = readFileSync('src/index.css', 'utf8')
     const main = readFileSync('src/main.tsx', 'utf8')
+    const app = readFileSync('src/App.tsx', 'utf8')
     expect(index).toContain('@tailwind base;')
     expect(index).toContain('@tailwind components;')
     expect(index).toContain('@tailwind utilities;')
-    expect(main.indexOf("./index.css")).toBeLessThan(main.indexOf("./product.css"))
+    expect(app).toContain("./product.css")
     expect(main).toContain("./design/system.css")
   })
 

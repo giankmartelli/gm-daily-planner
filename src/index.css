@@ -9,4 +9,6 @@ html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
+.route-loading { width: 2rem; height: 2rem; margin: 45vh auto 0; border: 2px solid var(--color-neutral-200); border-top-color: var(--color-primary-500); border-radius: var(--radius-full); animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { outline: 3px solid color-mix(in srgb,var(--color-primary-500) 22%,transparent); outline-offset: 2px; }

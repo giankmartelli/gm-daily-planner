@@ -1,4 +1,5 @@
 import { ArrowRight, BarChart3, BrainCircuit, CalendarRange, Check, Clock3, Cloud, Command, Focus, Menu, ShieldCheck, Sparkles, X, Zap } from 'lucide-react'
+import './marketing.css'
 import { useEffect, useState } from 'react'
 import { BrandLogo } from './BrandLogo'
 
