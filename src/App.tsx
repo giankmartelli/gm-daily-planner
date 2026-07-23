@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
+import { DashboardOverview } from './components/DashboardOverview'
 import { ProductivityTimer } from './components/ProductivityTimer'
 import { SmartPlannerPanel } from './components/SmartPlannerPanel'
 import { TaskPanel } from './components/TaskPanel'
@@ -38,6 +39,11 @@ function loadDayWithRecurrence(date: string): DayData {
     if (!current.tasks.some((item) => item.id === id)) recurring.push({ ...task, id, completed: false, subtasks: task.subtasks.map((sub) => ({ ...sub, completed: false })), trackedMinutes: 0 })
   }))
   return recurring.length ? { ...current, tasks: [...current.tasks, ...recurring] } : current
+}
+
+function dayScore(data: DayData) {
+  const total = data.tasks.length + data.habits.length
+  return total ? Math.round((data.tasks.filter((task) => task.completed).length + data.habits.filter((habit) => habit.completed).length) / total * 100) : 0
 }
 
 function App() {
@@ -122,6 +128,14 @@ function App() {
   const score = total ? Math.round(((completed + habitDone) / total) * 100) : 0
   const tracked = workspace.sessions.filter((session) => session.date === selectedDate).reduce((sum, session) => sum + session.minutes, 0) + day.tasks.reduce((sum, task) => sum + task.trackedMinutes, 0)
   const activeKeys = repository.listDayKeys()
+  const recentScores = useMemo(() => Array.from({ length: 30 }, (_, index) => {
+    const cursor = new Date(`${selectedDate}T12:00:00`)
+    cursor.setDate(cursor.getDate() - (29 - index))
+    const key = new Intl.DateTimeFormat('sv-SE').format(cursor)
+    return dayScore(key === selectedDate ? day : repository.getDay(key))
+  }), [day, selectedDate])
+  const weeklyScores = recentScores.slice(-7)
+  const monthlyScore = Math.round(recentScores.reduce((sum, value) => sum + value, 0) / recentScores.length)
   const streak = useMemo(() => { let count = 0; const date = new Date(); for (let i = 0; i < 366; i += 1) { const key = new Intl.DateTimeFormat('sv-SE').format(date); const data = key === selectedDate ? day : repository.getDay(key); if (!data.tasks.length || !data.tasks.every((task) => task.completed)) break; count += 1; date.setDate(date.getDate() - 1) } return count }, [day, selectedDate])
   const visibleTasks = search ? day.tasks.filter((task) => `${task.title} ${task.category} ${task.tags.join(' ')}`.toLowerCase().includes(search.toLowerCase())) : day.tasks
   const setTasks = (tasks: Task[]) => setDay((data) => {
@@ -168,6 +182,7 @@ function App() {
         <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>
 
         {view === 'dashboard' && <>
+          <DashboardOverview date={selectedDate} day={day} goals={workspace.goals} score={score} trackedMinutes={tracked} streak={streak} weeklyScores={weeklyScores} monthlyScore={monthlyScore}/>
           <SmartPlannerPanel tasks={day.tasks} schedule={day.schedule} date={selectedDate} onApply={applyPlan}/>
           <section className="metric-grid"><article><span className="metric-icon blue"><CheckCircle2/></span><div><p>Completadas</p><strong>{completed}<small> / {day.tasks.length}</small></strong><em>tareas de hoy</em></div></article><article><span className="metric-icon violet"><TrendingUp/></span><div><p>Productividad</p><strong>{score}%</strong><em>{score >= 70 ? 'Excelente ritmo' : 'Listo para avanzar'}</em></div></article><article><span className="metric-icon orange"><Zap/></span><div><p>Racha actual</p><strong>{streak}<small> días</small></strong><em>La constancia suma</em></div></article><article><span className="metric-icon green"><Clock3/></span><div><p>Tiempo enfocado</p><strong>{Math.floor(tracked / 60)}<small>h</small> {tracked % 60}<small>m</small></strong><em>registrado hoy</em></div></article></section>
           <div className="dashboard-grid"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><div className="right-rail"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/></div></div>
