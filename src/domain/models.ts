@@ -24,6 +24,21 @@ export type Task = {
   preferredPeriod?: PreferredPeriod
   trackedMinutes: number
   createdAt: string
+  importance?: number
+  urgency?: number
+  focusRequired?: number
+  context?: string
+  dependencies?: string[]
+  repeatType?: Recurrence
+  preferredDays?: number[]
+  calendarLocked?: boolean
+  movable?: boolean
+  createdAutomatically?: boolean
+  aiGenerated?: boolean
+  completionScore?: number
+  difficulty?: number
+  interruptible?: boolean
+  deepWork?: boolean
 }
 export type Habit = { id: string; name: string; completed: boolean }
 export type Goal = { id: string; title: string; target: number; progress: number; unit: string }
@@ -56,5 +71,20 @@ export function normalizeTask(raw: Partial<Task> & Pick<Task, 'id' | 'title'>): 
     preferredPeriod: raw.preferredPeriod ?? 'cualquiera',
     trackedMinutes: raw.trackedMinutes ?? 0,
     createdAt: raw.createdAt ?? new Date().toISOString(),
+    importance: raw.importance ?? 0.5,
+    urgency: raw.urgency ?? 0.5,
+    focusRequired: raw.focusRequired ?? 0.5,
+    context: raw.context ?? raw.category ?? 'Otras',
+    dependencies: raw.dependencies ?? [],
+    repeatType: raw.repeatType ?? raw.recurrence ?? 'ninguna',
+    preferredDays: raw.preferredDays ?? [],
+    calendarLocked: raw.calendarLocked ?? false,
+    movable: raw.movable ?? true,
+    createdAutomatically: raw.createdAutomatically ?? false,
+    aiGenerated: raw.aiGenerated ?? false,
+    completionScore: raw.completionScore ?? 0,
+    difficulty: raw.difficulty ?? 0.5,
+    interruptible: raw.interruptible ?? true,
+    deepWork: raw.deepWork ?? false,
   }
 }
