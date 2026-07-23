@@ -102,10 +102,12 @@ export async function syncCalendar(provider,request,response){
     let synchronized=0
     for(const account of accounts){
       const accessToken=Date.parse(account.token_expires_at||0)<=Date.now()+60_000 ? await refreshAccount(provider,account,admin) : decrypt(account.access_token_encrypted)
-      const events=provider==='google'?await googleEvents(accessToken):await outlookEvents(accessToken)
-      const rows=events.map(event=>({...event,account_id:account.id,user_id:user.id,provider}))
+      const {data:syncState}=await admin.from('calendar_sync_state').select('cursor,delta_link').eq('account_id',account.id).maybeSingle()
+      const result=provider==='google'?await googleEvents(accessToken,syncState?.cursor):await outlookEvents(accessToken,syncState?.delta_link)
+      const rows=result.events.map(event=>({...event,account_id:account.id,user_id:user.id,provider}))
       if(rows.length){const {error:upsertError}=await admin.from('external_calendar_events').upsert(rows,{onConflict:'account_id,external_event_id'});if(upsertError)throw upsertError}
-      await admin.from('calendar_sync_state').upsert({account_id:account.id,user_id:user.id,last_synced_at:new Date().toISOString(),last_success_at:new Date().toISOString(),last_error:null,consecutive_failures:0,updated_at:new Date().toISOString()})
+      if(result.deletedIds.length)await admin.from('external_calendar_events').delete().eq('account_id',account.id).in('external_event_id',result.deletedIds)
+      await admin.from('calendar_sync_state').upsert({account_id:account.id,user_id:user.id,cursor:result.cursor??syncState?.cursor??null,delta_link:result.deltaLink??syncState?.delta_link??null,last_synced_at:new Date().toISOString(),last_success_at:new Date().toISOString(),last_error:null,consecutive_failures:0,updated_at:new Date().toISOString()})
       synchronized+=rows.length
     }
     return send(response,200,{accounts:accounts.length,events:synchronized})
@@ -130,15 +132,40 @@ async function refreshAccount(provider,account,admin){
   await admin.from('calendar_accounts').update({access_token_encrypted:encrypt(tokens.access_token),refresh_token_encrypted:tokens.refresh_token?encrypt(tokens.refresh_token):account.refresh_token_encrypted,token_expires_at:new Date(Date.now()+(tokens.expires_in||3600)*1000).toISOString(),status:'active',updated_at:new Date().toISOString()}).eq('id',account.id)
   return tokens.access_token
 }
-async function googleEvents(token){
+async function googleEvents(token,syncToken){
   const timeMin=new Date(Date.now()-7*86_400_000).toISOString(),timeMax=new Date(Date.now()+90*86_400_000).toISOString()
-  const url=new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');url.search=new URLSearchParams({singleEvents:'true',showDeleted:'true',timeMin,timeMax,maxResults:'2500'}).toString()
-  const response=await fetch(url,{headers:{authorization:`Bearer ${token}`}});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'Error de sincronización Google')
-  return (body.items||[]).filter(item=>item.status!=='cancelled'&&item.start&&item.end).map(item=>({external_event_id:item.id,title:item.summary||'Ocupado',starts_at:item.start.dateTime||`${item.start.date}T00:00:00Z`,ends_at:item.end.dateTime||`${item.end.date}T00:00:00Z`,timezone:item.start.timeZone||null,all_day:Boolean(item.start.date),recurring_event_id:item.recurringEventId||null,status:item.status||'confirmed',etag:item.etag||null,raw_hash:hash(JSON.stringify([item.id,item.updated,item.start,item.end]))}))
+  const events=[],deletedIds=[];let pageToken,nextSyncToken
+  do{
+    const url=new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events')
+    const query=syncToken?{singleEvents:'true',showDeleted:'true',syncToken,maxResults:'2500'}:{singleEvents:'true',showDeleted:'true',timeMin,timeMax,maxResults:'2500'}
+    if(pageToken)query.pageToken=pageToken
+    url.search=new URLSearchParams(query).toString()
+    const response=await fetch(url,{headers:{authorization:`Bearer ${token}`}})
+    if(response.status===410&&syncToken)return googleEvents(token,null)
+    const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'Error de sincronización Google')
+    for(const item of body.items||[]){
+      if(item.status==='cancelled'){deletedIds.push(item.id);continue}
+      if(!item.start||!item.end)continue
+      events.push({external_event_id:item.id,title:item.summary||'Ocupado',starts_at:item.start.dateTime||`${item.start.date}T00:00:00Z`,ends_at:item.end.dateTime||`${item.end.date}T00:00:00Z`,timezone:item.start.timeZone||null,all_day:Boolean(item.start.date),recurring_event_id:item.recurringEventId||null,status:item.status||'confirmed',etag:item.etag||null,raw_hash:hash(JSON.stringify([item.id,item.updated,item.start,item.end]))})
+    }
+    pageToken=body.nextPageToken;nextSyncToken=body.nextSyncToken||nextSyncToken
+  }while(pageToken)
+  return {events,deletedIds,cursor:nextSyncToken}
 }
-async function outlookEvents(token){
+async function outlookEvents(token,deltaLink){
   const start=new Date(Date.now()-7*86_400_000).toISOString(),end=new Date(Date.now()+90*86_400_000).toISOString()
-  const url=`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(start)}&endDateTime=${encodeURIComponent(end)}&$top=1000&$select=id,subject,start,end,isAllDay,isCancelled,seriesMasterId,lastModifiedDateTime`
-  const response=await fetch(url,{headers:{authorization:`Bearer ${token}`,'Prefer':'outlook.timezone=\"UTC\"'}});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'Error de sincronización Outlook')
-  return (body.value||[]).filter(item=>!item.isCancelled).map(item=>({external_event_id:item.id,title:item.subject||'Ocupado',starts_at:`${item.start.dateTime}Z`,ends_at:`${item.end.dateTime}Z`,timezone:item.start.timeZone||'UTC',all_day:Boolean(item.isAllDay),recurring_event_id:item.seriesMasterId||null,status:'confirmed',raw_hash:hash(JSON.stringify([item.id,item.lastModifiedDateTime,item.start,item.end]))}))
+  let url=deltaLink||`https://graph.microsoft.com/v1.0/me/calendarView/delta?startDateTime=${encodeURIComponent(start)}&endDateTime=${encodeURIComponent(end)}`
+  const events=[],deletedIds=[];let finalDeltaLink=deltaLink
+  while(url){
+    const response=await fetch(url,{headers:{authorization:`Bearer ${token}`,'Prefer':'outlook.timezone=\"UTC\"'}});const body=await response.json()
+    if(response.status===410&&deltaLink)return outlookEvents(token,null)
+    if(!response.ok)throw new Error(body.error?.message||'Error de sincronización Outlook')
+    for(const item of body.value||[]){
+      if(item['@removed']||item.isCancelled){deletedIds.push(item.id);continue}
+      if(!item.start||!item.end)continue
+      events.push({external_event_id:item.id,title:item.subject||'Ocupado',starts_at:`${item.start.dateTime}${item.start.dateTime.endsWith('Z')?'':'Z'}`,ends_at:`${item.end.dateTime}${item.end.dateTime.endsWith('Z')?'':'Z'}`,timezone:item.start.timeZone||'UTC',all_day:Boolean(item.isAllDay),recurring_event_id:item.seriesMasterId||null,status:'confirmed',raw_hash:hash(JSON.stringify([item.id,item.lastModifiedDateTime,item.start,item.end]))})
+    }
+    url=body['@odata.nextLink']||null;finalDeltaLink=body['@odata.deltaLink']||finalDeltaLink
+  }
+  return {events,deletedIds,deltaLink:finalDeltaLink}
 }
