@@ -1,7 +1,8 @@
 import { CalendarClock, Sparkles, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import type { EnergyLevel, Task } from '../domain/models'
-import { createSmartPlan, type PlannedBlock, type SmartPlan } from '../domain/smartPlanner'
+import type { PlannedBlock, SmartPlan } from '../domain/smartPlanner'
+import { defaultPlanningProfile, fromLegacyTask, planner, type PlanResult } from '../planner'
 
 type Props = {
   tasks: Task[]
@@ -10,15 +11,32 @@ type Props = {
   onApply: (blocks: PlannedBlock[]) => void
 }
 
+const selectedEnergyLabel = (energy: EnergyLevel) => ({ baja: 'Low', media: 'Medium', alta: 'High' })[energy]
+
 export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
   const [open, setOpen] = useState(false)
   const [availableFrom, setAvailableFrom] = useState('08:00')
   const [availableUntil, setAvailableUntil] = useState('18:00')
   const [energyPreference, setEnergyPreference] = useState<EnergyLevel>('media')
   const [proposal, setProposal] = useState<SmartPlan | null>(null)
+  const [intelligence, setIntelligence] = useState<PlanResult | null>(null)
 
-  const close = () => { setOpen(false); setProposal(null) }
-  const generate = () => setProposal(createSmartPlan({ tasks, schedule, date, availableFrom, availableUntil, energyPreference }))
+  const close = () => { setOpen(false); setProposal(null); setIntelligence(null) }
+  const generate = () => {
+    const profile = defaultPlanningProfile()
+    profile.workingHours = { from: availableFrom, until: availableUntil }
+    const selectedEnergy = { baja: 'Low', media: 'Medium', alta: 'High' }[energyPreference] as 'Low' | 'Medium' | 'High'
+    profile.energyCurve = [{ from: availableFrom, until: availableUntil, energy: selectedEnergy }]
+    const events = Object.entries(schedule).flatMap(([start, title]) => {
+      if (!title.trim()) return []
+      const [hours, minutes] = start.split(':').map(Number), endMinutes = Math.min(1439, hours * 60 + minutes + 60)
+      return [{ id: `schedule:${start}`, title, start, end: `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`, locked: true, kind: 'event' as const }]
+    })
+    const result = planner.planDay({ date, tasks: tasks.map(fromLegacyTask), events, profile })
+    const legacy = new Map(tasks.map((task) => [task.id, task]))
+    setIntelligence(result)
+    setProposal({ blocks: result.blocks.flatMap((block) => block.taskId ? [{ taskId: block.taskId, title: block.title, startTime: block.start, endTime: block.end, durationMinutes: block.durationMinutes, reason: block.reason.join(' · ') }] : []), unscheduledTasks: result.unscheduledTasks.flatMap((task) => legacy.get(task.id) ?? []), totalPlannedMinutes: result.totalPlannedMinutes, explanation: result.explanation })
+  }
   const apply = () => {
     if (!proposal?.blocks.length) return
     onApply(proposal.blocks)
@@ -40,6 +58,7 @@ export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
 
         {proposal && <div className="planner-result" aria-live="polite">
           <div className="planner-summary"><strong>{proposal.totalPlannedMinutes} min planificados</strong><span>{proposal.blocks.length} bloques · {proposal.unscheduledTasks.length} pendientes</span></div>
+          {intelligence && <section className="planner-intelligence"><header><div><span>PLAN GENERADO POR IA</span><strong>Planner AI · Motor determinístico</strong></div><em>{Math.round(intelligence.confidence * 100)}% confianza</em></header><div><p><span>Energía utilizada</span><strong>{intelligence.blocks.filter((block) => block.kind === 'task').map((block) => block.energy).filter((value, index, values) => values.indexOf(value) === index).join(' · ') || selectedEnergyLabel(energyPreference)}</strong></p><p><span>Tiempo libre</span><strong>{Math.floor(intelligence.freeMinutes / 60)}h {intelligence.freeMinutes % 60}m</strong></p><p><span>Riesgo de incumplimiento</span><strong>{Math.round(intelligence.risk * 100)}%</strong></p></div></section>}
           <div className="planned-blocks">
             {proposal.blocks.map((block) => <article key={block.taskId}><time>{block.startTime}<span>— {block.endTime}</span></time><div><strong>{block.title}</strong><p>{block.reason}</p></div><button aria-label={`Eliminar bloque ${block.title}`} onClick={() => setProposal((current) => current ? { ...current, blocks: current.blocks.filter((item) => item.taskId !== block.taskId), totalPlannedMinutes: current.totalPlannedMinutes - block.durationMinutes } : current)}><Trash2 size={14}/></button></article>)}
             {!proposal.blocks.length && <p className="planner-empty">No hay tareas que encajen en ese horario.</p>}

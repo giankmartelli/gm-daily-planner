@@ -215,6 +215,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .planner-summary { padding: 14px 16px; border-radius: 12px; }
 .planner-summary strong { font-size: 12px; }
 .planner-summary span { font-size: 11px; }
+.planner-intelligence { margin-top: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--color-primary-500) 14%, var(--border)); border-radius: 13px; background: color-mix(in srgb, var(--color-primary-50) 52%, var(--surface)); }
+.planner-intelligence header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.planner-intelligence header > div { display: grid; gap: 3px; }
+.planner-intelligence header span { color: var(--color-primary-600); font-size: 8px; font-weight: 750; letter-spacing: .1em; }
+.planner-intelligence header strong { font-size: 12px; }
+.planner-intelligence header em { padding: 5px 8px; border-radius: var(--radius-full); background: var(--surface); color: var(--color-primary-600); font-size: 9px; font-style: normal; font-weight: 650; }
+.planner-intelligence > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+.planner-intelligence p { display: grid; gap: 3px; margin: 0; padding: 9px; border-radius: 9px; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+.planner-intelligence p span { color: var(--muted); font-size: 8px; }
+.planner-intelligence p strong { font-size: 10px; }
 .planned-blocks { gap: 9px; margin-top: 12px; }
 .planned-blocks article { grid-template-columns: 92px 1fr 36px; padding: 14px; border-radius: 13px; }
 .planned-blocks time, .planned-blocks strong { font-size: 12px; }
@@ -256,6 +266,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .right-rail, .dashboard-bottom, .focus-layout { gap: 14px; }
   .smart-planner-modal { padding: 24px 20px; }
   .smart-planner-heading h2 { font-size: 21px; }
+  .planner-intelligence > div { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 430px) {
