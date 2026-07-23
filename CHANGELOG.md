@@ -1,5 +1,13 @@
 # Changelog
 
+## Planner Engine V2 y calendarios preparados
+
+- Modelo de tarea ampliado de forma retrocompatible.
+- Scoring explicable 0–100 con pesos centralizados.
+- Reorganización comparativa, desglose y aprendizaje revisable.
+- Infraestructura server-side de solo lectura para Google y Outlook Calendar.
+- Conexiones de calendario dentro de la experiencia del usuario.
+
 ## 2026-07-23 — GM AI OS
 
 - AI Core con interfaces comunes, dependency injection, eventos y repositorios.
