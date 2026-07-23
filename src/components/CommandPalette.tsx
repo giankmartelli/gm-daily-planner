@@ -10,9 +10,10 @@ type Props = {
   onToggleTheme: () => void
   onPlanDay: () => void
   onUndoPlan: () => void
+  aiFirstEnabled: boolean
 }
 
-export function CommandPalette({ open, onClose, onNavigate, onNewTask, onToggleTheme, onPlanDay, onUndoPlan }: Props) {
+export function CommandPalette({ open, onClose, onNavigate, onNewTask, onToggleTheme, onPlanDay, onUndoPlan, aiFirstEnabled }: Props) {
   const [query, setQuery] = useState('')
   const commands = useMemo(() => [
     { label: 'Crear una tarea', hint: 'N', icon: Plus, action: onNewTask },
@@ -30,7 +31,9 @@ export function CommandPalette({ open, onClose, onNavigate, onNewTask, onToggleT
     { label: 'Ver Informes', hint: 'G R', icon: BarChart3, action: () => onNavigate('reports') },
     { label: 'Cambiar apariencia', hint: 'T', icon: document.documentElement.dataset.theme === 'dark' ? Sun : Moon, action: onToggleTheme },
   ], [onNavigate, onNewTask, onPlanDay, onToggleTheme, onUndoPlan])
-  const filtered = commands.filter((command) => command.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+  const filtered = commands
+    .filter((command) => aiFirstEnabled || !['Replanificar lo pendiente', 'Proteger 90 minutos de enfoque', 'Mostrar tareas en riesgo', 'Reducir mi carga', 'Preparar mañana', 'Deshacer último plan'].includes(command.label))
+    .filter((command) => command.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   if (!open) return null
   const run = (action: () => void) => { action(); setQuery(''); onClose() }
   return <div className="command-shade" onMouseDown={onClose}>

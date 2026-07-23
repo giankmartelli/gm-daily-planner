@@ -15,6 +15,7 @@ import { localPlannerRepository as repository } from './data/plannerRepository'
 import { colors } from './design/tokens'
 import { HOURS, todayKey, type DayData, type Goal, type Task, type ViewMode, type WorkspaceData } from './domain/models'
 import { applySmartPlan, type PlannedBlock } from './domain/smartPlanner'
+import { featureFlags } from './ai-planning/flags'
 import { LIMITS } from './domain/validation'
 import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './lib/supabase'
 import { reportError } from './lib/monitoring'
@@ -236,7 +237,7 @@ function App() {
     </main>
     {message && <div className="toast" role="status"><span>{message}</span><button onClick={() => setMessage('')} aria-label="Cerrar mensaje"><X size={14}/></button></div>}
     {installHelp && <div className="modal-shade" onMouseDown={() => setInstallHelp(false)}><section className="install-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button onClick={() => setInstallHelp(false)} aria-label="Cerrar"><X/></button><img src="/icons/icon-192.png" alt="GM Daily Planner"/><h2>Instala GM Daily Planner</h2><p>En iPhone usa Compartir → Agregar a inicio. En Mac, Windows o Android abre el menú del navegador y selecciona Instalar.</p><button className="primary" onClick={() => setInstallHelp(false)}>Entendido</button></section></div>}
-    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onNavigate={setView} onNewTask={openNewTask} onToggleTheme={cycleTheme} onPlanDay={() => { setView('dashboard'); window.setTimeout(() => window.dispatchEvent(new Event('gm:open-planner')), 0) }} onUndoPlan={undoPlan}/>
+    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onNavigate={setView} onNewTask={openNewTask} onToggleTheme={cycleTheme} onPlanDay={() => { setView('dashboard'); window.setTimeout(() => window.dispatchEvent(new Event('gm:open-planner')), 0) }} onUndoPlan={undoPlan} aiFirstEnabled={featureFlags.aiFirstPlanner}/>
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)}/>
   </div>
 }
