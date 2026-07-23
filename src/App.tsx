@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Monitor, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
+import { CalendarConnections } from './components/CalendarConnections'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardOverview } from './components/DashboardOverview'
 import { DayOutcomeReview } from './components/DayOutcomeReview'
@@ -242,7 +243,7 @@ function App() {
           <div className="dashboard-bottom"><HabitsPanel day={day} setDay={setDay} value={newHabit} setValue={setNewHabit} onAdd={addHabit}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>
         </>}
         {view === 'tasks' && <div className="single-column"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><SchedulePanel day={day} setDay={setDay}/></div>}
-        {view === 'calendar' && <div className="calendar-layout"><CalendarPanel selected={selectedDate} activeKeys={activeKeys} onSelect={selectDate}/><SchedulePanel day={day} setDay={setDay}/></div>}
+        {view === 'calendar' && <><CalendarConnections user={user}/><div className="calendar-layout"><CalendarPanel selected={selectedDate} activeKeys={activeKeys} onSelect={selectDate}/><SchedulePanel day={day} setDay={setDay}/></div></>}
         {view === 'focus' && <div className="focus-layout"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>}
         {view === 'reports' && <ReportsCenter selectedDate={selectedDate} sessions={workspace.sessions} userId={user?.id}/>}
       </div>
