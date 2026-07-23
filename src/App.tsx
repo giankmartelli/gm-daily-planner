@@ -7,6 +7,7 @@ import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { DashboardOverview } from './components/DashboardOverview'
+import { DayOutcomeReview } from './components/DayOutcomeReview'
 import { ProductivityTimer } from './components/ProductivityTimer'
 import { ReportsCenter } from './components/ReportsCenter'
 import { SmartPlannerPanel } from './components/SmartPlannerPanel'
@@ -16,6 +17,8 @@ import { colors } from './design/tokens'
 import { HOURS, todayKey, type DayData, type Goal, type Task, type ViewMode, type WorkspaceData } from './domain/models'
 import { applySmartPlan, type PlannedBlock } from './domain/smartPlanner'
 import { featureFlags } from './ai-planning/flags'
+import { adaptFromOutcome } from './ai-planning/adaptiveRules'
+import type { PlanOutcome } from './ai-planning/domain'
 import { LIMITS } from './domain/validation'
 import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './lib/supabase'
 import { reportError } from './lib/monitoring'
@@ -73,6 +76,7 @@ function App() {
   const [syncState, setSyncState] = useState<SyncState>('local')
   const [syncReady, setSyncReady] = useState(false)
   const [previousSchedule, setPreviousSchedule] = useState<Record<string, string> | null>(null)
+  const [lastAppliedPlanId, setLastAppliedPlanId] = useState<string>()
   const selectedDateRef = useRef(selectedDate)
   const connectionVersionRef = useRef(0)
   const markSyncSuccess = () => setSyncState((current) => current === 'error' ? 'error' : 'synced')
@@ -186,6 +190,7 @@ function App() {
       setPreviousSchedule(data.schedule)
       return { ...data, schedule: applySmartPlan(data.schedule, blocks) }
     })
+    setLastAppliedPlanId(uid())
     setMessage(`${blocks.length} bloque(s) añadidos a tu agenda. Guardando cambios…`)
   }
   const undoPlan = useCallback(() => {
@@ -194,6 +199,12 @@ function App() {
     setPreviousSchedule(null)
     setMessage('Se restauró la agenda anterior.')
   }, [previousSchedule])
+  const recordOutcome = (outcome: PlanOutcome) => {
+    const adaptation = adaptFromOutcome(day.tasks, outcome)
+    setDay((data) => ({ ...data, tasks: adaptation.tasks }))
+    localStorage.setItem(`gm-daily-planner:outcome:${outcome.recordedAt}`, JSON.stringify(outcome))
+    setMessage(`Revisión guardada. ${adaptation.explanation.join(' ')}`)
+  }
 
   const install = async () => { if (!installPrompt) return setInstallHelp(true); await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null) }
   const addHabit = (event: FormEvent) => { event.preventDefault(); const name = newHabit.trim(); if (!name) return setMessage('Escribe un nombre para el hábito.'); if (day.habits.some((habit) => habit.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return setMessage('Ese hábito ya existe.'); setDay((data) => ({ ...data, habits: [...data.habits, { id: uid(), name, completed: false }] })); setNewHabit(''); setMessage('Hábito creado.') }
@@ -225,6 +236,7 @@ function App() {
         {view === 'dashboard' && <>
           <DashboardOverview date={selectedDate} day={day} goals={workspace.goals} score={score} trackedMinutes={tracked} streak={streak} weeklyScores={weeklyScores} monthlyScore={monthlyScore}/>
           <SmartPlannerPanel tasks={day.tasks} schedule={day.schedule} date={selectedDate} onApply={applyPlan}/>
+          {featureFlags.aiFirstPlanner && <DayOutcomeReview tasks={day.tasks} appliedPlanId={lastAppliedPlanId} onSubmit={recordOutcome}/>}
           <section className="metric-grid"><article><span className="metric-icon blue"><CheckCircle2/></span><div><p>Completadas</p><strong>{completed}<small> / {day.tasks.length}</small></strong><em>tareas de hoy</em></div></article><article><span className="metric-icon violet"><TrendingUp/></span><div><p>Productividad</p><strong>{score}%</strong><em>{score >= 70 ? 'Excelente ritmo' : 'Listo para avanzar'}</em></div></article><article><span className="metric-icon orange"><Zap/></span><div><p>Racha actual</p><strong>{streak}<small> días</small></strong><em>La constancia suma</em></div></article><article><span className="metric-icon green"><Clock3/></span><div><p>Tiempo enfocado</p><strong>{Math.floor(tracked / 60)}<small>h</small> {tracked % 60}<small>m</small></strong><em>registrado hoy</em></div></article></section>
           <div className="dashboard-grid"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><div className="right-rail"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/></div></div>
           <div className="dashboard-bottom"><HabitsPanel day={day} setDay={setDay} value={newHabit} setValue={setNewHabit} onAdd={addHabit}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>
