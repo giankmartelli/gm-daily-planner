@@ -4,6 +4,8 @@ import type { EnergyLevel, Task } from '../domain/models'
 import type { PlannedBlock, SmartPlan } from '../domain/smartPlanner'
 import { defaultPlanningProfile, fromLegacyTask, planner, type PlanResult } from '../planner'
 import { adjustBlock, freeMinutes, reorderBlocks } from '../ai-planning/adjustments'
+import { PlanRiskIndicator } from './PlanRiskIndicator'
+import { PlanExplanation } from './PlanExplanation'
 
 type Props = {
   tasks: Task[]
@@ -83,7 +85,7 @@ export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
 
         {proposal && <div className="planner-result" aria-live="polite">
           <div className="planner-summary"><strong>{proposal.totalPlannedMinutes} min planificados</strong><span>{proposal.blocks.length} bloques · {proposal.unscheduledTasks.length} pendientes</span></div>
-          {intelligence && <section className="planner-intelligence"><header><div><span>PROPUESTA DETERMINÍSTICA · SUGERENCIA</span><strong>GM AI Planner · Reglas locales explicables</strong></div><em>{Math.round(intelligence.confidence * 100)}% confianza estimada</em></header><div><p><span>Energía utilizada · Declarada</span><strong>{intelligence.blocks.filter((block) => block.kind === 'task').map((block) => block.energy).filter((value, index, values) => values.indexOf(value) === index).join(' · ') || selectedEnergyLabel(energyPreference)}</strong></p><p><span>Tiempo libre · Estimación</span><strong>{Math.floor(intelligence.freeMinutes / 60)}h {intelligence.freeMinutes % 60}m</strong></p><p><span>Riesgo · Estimación</span><strong>{Math.round(intelligence.risk * 100)}%</strong></p></div><p>Clima y sueño: no disponibles. No se utilizaron para esta propuesta.</p></section>}
+          {intelligence && <section className="planner-intelligence"><header><div><span>PROPUESTA DETERMINÍSTICA · SUGERENCIA</span><strong>GM AI Planner · Reglas locales explicables</strong></div><em>{Math.round(intelligence.confidence * 100)}% confianza estimada</em></header><div><p><span>Energía utilizada · Declarada</span><strong>{intelligence.blocks.filter((block) => block.kind === 'task').map((block) => block.energy).filter((value, index, values) => values.indexOf(value) === index).join(' · ') || selectedEnergyLabel(energyPreference)}</strong></p><p><span>Tiempo libre · Estimación</span><strong>{Math.floor(intelligence.freeMinutes / 60)}h {intelligence.freeMinutes % 60}m</strong></p><PlanRiskIndicator risk={intelligence.risk} confidence={intelligence.confidence}/></div><p>Clima y sueño: no disponibles. No se utilizaron para esta propuesta.</p></section>}
           <div className="planned-blocks">
             <div className="plan-comparison"><div><strong>Antes · Confirmado</strong>{Object.entries(schedule).filter(([, title]) => title.trim()).map(([time, title]) => <button key={time} type="button" onClick={() => setLockedEvents((current) => { const next = new Set(current); if (next.has(time)) next.delete(time); else next.add(time); return next })}><Lock size={12}/>{time} · {title}<small>{lockedEvents.has(time) ? 'Bloqueado' : 'Desbloqueado'}</small></button>)}</div><div><strong>Después · Propuesta</strong><span>{freeMinutes(proposal.blocks, availableFrom, availableUntil)} min sin planificar</span></div></div>
             {proposal.blocks.map((block) => <article key={block.taskId} draggable onDragStart={() => setDraggedId(block.taskId)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedId) setProposal((current) => current ? { ...current, blocks: reorderBlocks(current.blocks, draggedId, block.taskId) } : current); setDraggedId(null) }}>
@@ -96,7 +98,7 @@ export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
           </div>
           {adjustmentMessage && <p className="adjustment-message" role="status">{adjustmentMessage}</p>}
           {!!proposal.unscheduledTasks.length && <div className="unscheduled"><strong>No pudieron programarse</strong><ul>{proposal.unscheduledTasks.map((task) => <li key={task.id}>{task.title}</li>)}</ul></div>}
-          {!!proposal.explanation.length && <details><summary>Ver criterios de la propuesta</summary><ul>{proposal.explanation.map((item) => <li key={item}>{item}</li>)}</ul></details>}
+          {!!proposal.explanation.length && <PlanExplanation items={proposal.explanation}/>}
         </div>}
         <footer><button onClick={close}>Cancelar</button><button className="apply-plan" disabled={!proposal?.blocks.length} onClick={apply}>Aplicar a mi agenda</button></footer>
       </section>
