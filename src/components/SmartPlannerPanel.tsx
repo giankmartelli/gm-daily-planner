@@ -1,5 +1,5 @@
 import { CalendarClock, Sparkles, Trash2, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { EnergyLevel, Task } from '../domain/models'
 import type { PlannedBlock, SmartPlan } from '../domain/smartPlanner'
 import { defaultPlanningProfile, fromLegacyTask, planner, type PlanResult } from '../planner'
@@ -20,6 +20,11 @@ export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
   const [energyPreference, setEnergyPreference] = useState<EnergyLevel>('media')
   const [proposal, setProposal] = useState<SmartPlan | null>(null)
   const [intelligence, setIntelligence] = useState<PlanResult | null>(null)
+  useEffect(() => {
+    const openPlanner = () => setOpen(true)
+    window.addEventListener('gm:open-planner', openPlanner)
+    return () => window.removeEventListener('gm:open-planner', openPlanner)
+  }, [])
 
   const close = () => { setOpen(false); setProposal(null); setIntelligence(null) }
   const generate = () => {
@@ -58,7 +63,7 @@ export function SmartPlannerPanel({ tasks, schedule, date, onApply }: Props) {
 
         {proposal && <div className="planner-result" aria-live="polite">
           <div className="planner-summary"><strong>{proposal.totalPlannedMinutes} min planificados</strong><span>{proposal.blocks.length} bloques · {proposal.unscheduledTasks.length} pendientes</span></div>
-          {intelligence && <section className="planner-intelligence"><header><div><span>PLAN GENERADO POR IA</span><strong>Planner AI · Motor determinístico</strong></div><em>{Math.round(intelligence.confidence * 100)}% confianza</em></header><div><p><span>Energía utilizada</span><strong>{intelligence.blocks.filter((block) => block.kind === 'task').map((block) => block.energy).filter((value, index, values) => values.indexOf(value) === index).join(' · ') || selectedEnergyLabel(energyPreference)}</strong></p><p><span>Tiempo libre</span><strong>{Math.floor(intelligence.freeMinutes / 60)}h {intelligence.freeMinutes % 60}m</strong></p><p><span>Riesgo de incumplimiento</span><strong>{Math.round(intelligence.risk * 100)}%</strong></p></div></section>}
+          {intelligence && <section className="planner-intelligence"><header><div><span>PROPUESTA DETERMINÍSTICA · SUGERENCIA</span><strong>GM AI Planner · Reglas locales explicables</strong></div><em>{Math.round(intelligence.confidence * 100)}% confianza estimada</em></header><div><p><span>Energía utilizada · Declarada</span><strong>{intelligence.blocks.filter((block) => block.kind === 'task').map((block) => block.energy).filter((value, index, values) => values.indexOf(value) === index).join(' · ') || selectedEnergyLabel(energyPreference)}</strong></p><p><span>Tiempo libre · Estimación</span><strong>{Math.floor(intelligence.freeMinutes / 60)}h {intelligence.freeMinutes % 60}m</strong></p><p><span>Riesgo · Estimación</span><strong>{Math.round(intelligence.risk * 100)}%</strong></p></div><p>Clima y sueño: no disponibles. No se utilizaron para esta propuesta.</p></section>}
           <div className="planned-blocks">
             {proposal.blocks.map((block) => <article key={block.taskId}><time>{block.startTime}<span>— {block.endTime}</span></time><div><strong>{block.title}</strong><p>{block.reason}</p></div><button aria-label={`Eliminar bloque ${block.title}`} onClick={() => setProposal((current) => current ? { ...current, blocks: current.blocks.filter((item) => item.taskId !== block.taskId), totalPlannedMinutes: current.totalPlannedMinutes - block.durationMinutes } : current)}><Trash2 size={14}/></button></article>)}
             {!proposal.blocks.length && <p className="planner-empty">No hay tareas que encajen en ese horario.</p>}

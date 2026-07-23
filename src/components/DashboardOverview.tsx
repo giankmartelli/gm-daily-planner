@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Award, BrainCircuit, CalendarDays, CloudSun, Gauge, Sparkles, Target, TimerReset } from 'lucide-react'
+import { Award, BrainCircuit, CalendarDays, CloudOff, Gauge, Sparkles, Target, TimerReset } from 'lucide-react'
 import type { DayData, Goal } from '../domain/models'
 
 type Props = {
@@ -60,13 +60,13 @@ export function DashboardOverview({ date, day, goals, score, trackedMinutes, str
     <article className="day-brief">
       <div className="day-brief-top">
         <span className="live-time">{new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' }).format(now)}</span>
-        <span className="weather-placeholder" title="Integración meteorológica preparada"><CloudSun size={16}/> 22° · Parcialmente nublado</span>
+        <span className="weather-placeholder" title="No hay proveedor meteorológico configurado"><CloudOff size={16}/> Clima no disponible · Sin integrar</span>
       </div>
       <p className="eyebrow">{new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(selected)}</p>
       <h2>{now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}.<br/><span>Diseñemos un día que se sienta posible.</span></h2>
       <blockquote>“{quotes[selected.getDay()]}”</blockquote>
       <div className="brief-signals">
-        <div><Gauge size={17}/><span>Energía</span><strong>{energy.label}</strong><i><b style={{ width: `${energy.value}%` }}/></i><small>{energy.copy}</small></div>
+        <div><Gauge size={17}/><span>Energía · Estimación</span><strong>{energy.label}</strong><i><b style={{ width: `${energy.value}%` }}/></i><small>{energy.copy}</small></div>
         <div><Target size={17}/><span>Objetivos</span><strong>{objectiveProgress}%</strong><i><b style={{ width: `${objectiveProgress}%` }}/></i><small>{goals.length ? `${goals.length} objetivos activos` : 'Define tu primer objetivo'}</small></div>
         <div><TimerReset size={17}/><span>Capacidad</span><strong>{Math.max(0, 480 - overloadedMinutes)} min</strong><i><b style={{ width: `${Math.max(4, Math.min(100, 100 - overloadedMinutes / 4.8))}%` }}/></i><small>{overloadedMinutes > 480 ? 'Día con sobrecarga' : 'Margen disponible hoy'}</small></div>
       </div>
