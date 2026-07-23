@@ -202,7 +202,7 @@ function App() {
   const recordOutcome = (outcome: PlanOutcome) => {
     const adaptation = adaptFromOutcome(day.tasks, outcome)
     setDay((data) => ({ ...data, tasks: adaptation.tasks }))
-    localStorage.setItem(`gm-daily-planner:outcome:${outcome.recordedAt}`, JSON.stringify(outcome))
+    localStorage.setItem(`gm-daily-planner:outcome:${user?.id ?? 'local'}:${outcome.recordedAt}`, JSON.stringify(outcome))
     setMessage(`Revisión guardada. ${adaptation.explanation.join(' ')}`)
   }
 
@@ -244,7 +244,7 @@ function App() {
         {view === 'tasks' && <div className="single-column"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><SchedulePanel day={day} setDay={setDay}/></div>}
         {view === 'calendar' && <div className="calendar-layout"><CalendarPanel selected={selectedDate} activeKeys={activeKeys} onSelect={selectDate}/><SchedulePanel day={day} setDay={setDay}/></div>}
         {view === 'focus' && <div className="focus-layout"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>}
-        {view === 'reports' && <ReportsCenter selectedDate={selectedDate} sessions={workspace.sessions}/>} 
+        {view === 'reports' && <ReportsCenter selectedDate={selectedDate} sessions={workspace.sessions} userId={user?.id}/>}
       </div>
     </main>
     {message && <div className="toast" role="status"><span>{message}</span><button onClick={() => setMessage('')} aria-label="Cerrar mensaje"><X size={14}/></button></div>}

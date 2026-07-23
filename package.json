@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:planner:coverage": "vitest run src/planner --coverage --coverage.include=src/planner/**/*.ts --coverage.exclude=src/planner/**/*.test.ts",
+    "test:ai:coverage": "vitest run src/core/ai --coverage --coverage.include=src/core/ai/**/*.ts --coverage.exclude=src/core/ai/**/*.test.ts --coverage.exclude=src/core/ai/features/**",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:e2e:remote": "node scripts/e2e-ai-remote.mjs",
     "audit:security": "node scripts/security-audit.mjs",
