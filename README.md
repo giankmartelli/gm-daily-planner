@@ -100,6 +100,15 @@ El planificador inteligente funciona localmente con reglas determinísticas, sin
 pnpm test:planner:coverage
 ```
 
+## Documentación de producto
+
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Planner AI Engine](docs/PLANNER-AI-ENGINE.md)
+- [Design System](docs/DESIGN-SYSTEM.md)
+- [Despliegue](docs/DEPLOYMENT.md)
+- [Roadmap](ROADMAP.md)
+- [Changelog](CHANGELOG.md)
+
 `test:e2e` espera por defecto una aplicación activa en `http://127.0.0.1:5173`. Usa `E2E_BASE_URL` para otra dirección.
 
 ## Checklist manual

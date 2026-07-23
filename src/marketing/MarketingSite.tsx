@@ -1,6 +1,7 @@
 import { ArrowRight, BarChart3, BrainCircuit, CalendarRange, Check, Clock3, Cloud, Command, Focus, Menu, ShieldCheck, Sparkles, X, Zap } from 'lucide-react'
 import './marketing.css'
 import { useEffect, useState } from 'react'
+import { PRODUCT_PLANS } from '../billing/plans'
 import { BrandLogo } from './BrandLogo'
 
 type PageKey = 'home' | 'features' | 'pricing' | 'privacy' | 'terms' | 'contact' | 'about'
@@ -22,7 +23,11 @@ function usePageMetadata(page: PageKey) {
     document.querySelector('meta[name="description"]')?.setAttribute('content', meta.description)
     document.querySelector('meta[property="og:title"]')?.setAttribute('content', meta.title)
     document.querySelector('meta[property="og:description"]')?.setAttribute('content', meta.description)
-    document.querySelector('link[rel="canonical"]')?.setAttribute('href', `${window.location.origin}${window.location.pathname}`)
+    const canonical = `${window.location.origin}${window.location.pathname}`
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonical)
+    document.querySelector('meta[property="og:url"]')?.setAttribute('content', canonical)
+    document.querySelector('meta[property="og:image"]')?.setAttribute('content', `${window.location.origin}/brand/og-cover.png`)
+    document.querySelector('meta[name="twitter:image"]')?.setAttribute('content', `${window.location.origin}/brand/og-cover.png`)
   }, [page])
 }
 
@@ -49,7 +54,8 @@ const benefits = [
 ]
 
 function PricingCards({ compact = false }: { compact?: boolean }) {
-  return <div className="pricing-grid"><article><span>Personal</span><h3>Gratis</h3><p>Para construir un sistema diario claro.</p><a className="button-secondary" href="/app">Comenzar ahora</a><ul><li><Check/>Tareas, agenda y hábitos</li><li><Check/>Calendario y enfoque</li><li><Check/>Modo offline</li></ul></article><article className="featured"><em>PRÓXIMAMENTE</em><span>Premium</span><h3>$8<small>/mes</small></h3><p>Para quienes quieren optimizar cada semana.</p><a className="button-primary" href="/app">Probar la versión actual</a><ul><li><Check/>Todo en Personal</li><li><Check/>Planificación avanzada</li><li><Check/>Informes ampliados</li>{!compact && <li><Check/>Sincronización multi-dispositivo</li>}</ul></article></div>
+  const plans = compact ? PRODUCT_PLANS.slice(0, 2) : PRODUCT_PLANS
+  return <div className="pricing-grid">{plans.map((plan) => <article key={plan.id} className={plan.featured ? 'featured' : ''}>{plan.id !== 'free' && <em>PRÓXIMAMENTE</em>}<span>{plan.name}</span><h3>{plan.priceMonthly === null ? 'A medida' : plan.priceMonthly === 0 ? 'Gratis' : `$${plan.priceMonthly}`} {typeof plan.priceMonthly === 'number' && plan.priceMonthly > 0 && <small>/mes</small>}</h3><p>{plan.description}</p><a className={plan.featured ? 'button-primary' : 'button-secondary'} href={plan.id === 'free' ? '/app' : '/contact'}>{plan.id === 'free' ? 'Comenzar ahora' : 'Unirme a la lista'}</a><ul>{plan.features.map((feature) => <li key={feature}><Check/>{feature}</li>)}</ul></article>)}</div>
 }
 
 function HomePage() {
