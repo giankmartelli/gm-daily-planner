@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import './product.css'
 import './design/product-system.css'
 import type { User } from '@supabase/supabase-js'
-import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Monitor, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
 import { DashboardOverview } from './components/DashboardOverview'
 import { ProductivityTimer } from './components/ProductivityTimer'
+import { ReportsCenter } from './components/ReportsCenter'
 import { SmartPlannerPanel } from './components/SmartPlannerPanel'
 import { TaskPanel } from './components/TaskPanel'
 import { localPlannerRepository as repository } from './data/plannerRepository'
@@ -18,9 +19,10 @@ import { isSupabaseConfigured, supabase, supabaseConfigurationMessage } from './
 import { reportError } from './lib/monitoring'
 import { syncService, type SyncState } from './services/syncService'
 
-type Theme = 'light' | 'dark'
+type Theme = 'light' | 'dark' | 'system'
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 const uid = () => crypto.randomUUID()
+const prefersDark = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches
 
 function dueOn(task: Task, origin: string, target: string) {
   const start = new Date(`${origin}T12:00:00`), end = new Date(`${target}T12:00:00`)
@@ -52,7 +54,11 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [day, setDay] = useState<DayData>(() => loadDayWithRecurrence(todayKey()))
   const [workspace, setWorkspace] = useState<WorkspaceData>(repository.getWorkspace)
-  const [theme, setTheme] = useState<Theme>(() => localStorage.getItem('gm-daily-planner:theme') === 'dark' ? 'dark' : 'light')
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('gm-daily-planner:theme')
+    return saved === 'dark' || saved === 'system' ? saved : 'light'
+  })
+  const [systemDark, setSystemDark] = useState(prefersDark)
   const [search, setSearch] = useState('')
   const [newHabit, setNewHabit] = useState('')
   const [newGoal, setNewGoal] = useState('')
@@ -70,7 +76,20 @@ function App() {
   useEffect(() => { selectedDateRef.current = selectedDate }, [selectedDate])
   useEffect(() => { const result = repository.saveDay(selectedDate, day); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [day, selectedDate])
   useEffect(() => { const result = repository.saveWorkspace(workspace); if (!result.ok) { const timer = window.setTimeout(() => setMessage(result.message), 0); return () => window.clearTimeout(timer) } }, [workspace])
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('gm-daily-planner:theme', theme); document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? colors.neutral[950] : colors.neutral[50]) }, [theme])
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const update = () => setSystemDark(media.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  useEffect(() => {
+    const resolved = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
+    document.documentElement.dataset.theme = resolved
+    document.documentElement.dataset.themePreference = theme
+    localStorage.setItem('gm-daily-planner:theme', theme)
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? colors.neutral[950] : colors.neutral[50])
+  }, [systemDark, theme])
   useEffect(() => { const handler = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPrompt) }; window.addEventListener('beforeinstallprompt', handler); return () => window.removeEventListener('beforeinstallprompt', handler) }, [])
   useEffect(() => { const handler = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('.search input')?.focus() } }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler) }, [])
   useEffect(() => {
@@ -176,7 +195,7 @@ function App() {
     </aside>
 
     <main className="workspace">
-      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}>{theme === 'light' ? <Moon size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
+      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : theme === 'dark' ? 'Usar tema del sistema' : 'Activar modo claro'} title={`Tema: ${theme === 'light' ? 'Claro' : theme === 'dark' ? 'Oscuro' : 'Sistema'}`}>{theme === 'light' ? <Moon size={18}/> : theme === 'dark' ? <Monitor size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
 
       <div className="content">
         <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>
@@ -191,7 +210,7 @@ function App() {
         {view === 'tasks' && <div className="single-column"><TaskPanel tasks={visibleTasks} onChange={updateVisibleTasks}/><SchedulePanel day={day} setDay={setDay}/></div>}
         {view === 'calendar' && <div className="calendar-layout"><CalendarPanel selected={selectedDate} activeKeys={activeKeys} onSelect={selectDate}/><SchedulePanel day={day} setDay={setDay}/></div>}
         {view === 'focus' && <div className="focus-layout"><ProductivityTimer onComplete={addSession}/><GoalPanel goals={workspace.goals} onChange={(goals) => setWorkspace((data) => ({ ...data, goals }))} onAdd={addGoal} value={newGoal} setValue={setNewGoal}/><SummaryPanel day={day} setDay={setDay} score={score} tracked={tracked}/></div>}
-        {view === 'reports' && <Reports selectedDate={selectedDate}/>} 
+        {view === 'reports' && <ReportsCenter selectedDate={selectedDate} sessions={workspace.sessions}/>} 
       </div>
     </main>
     {message && <div className="toast" role="status"><span>{message}</span><button onClick={() => setMessage('')} aria-label="Cerrar mensaje"><X size={14}/></button></div>}
@@ -215,12 +234,6 @@ function SchedulePanel({ day, setDay }: { day: DayData; setDay: React.Dispatch<R
 
 function SummaryPanel({ day, setDay, score, tracked }: { day: DayData; setDay: React.Dispatch<React.SetStateAction<DayData>>; score: number; tracked: number }) {
   return <section className="panel summary-panel"><div className="panel-title"><div><span className="icon-box violet"><BarChart3 size={17}/></span><div><h2>Resumen del día</h2><p>Tu progreso de un vistazo</p></div></div></div><div className="summary-ring" style={{ '--score': `${score * 3.6}deg` } as React.CSSProperties}><span><strong>{score}%</strong>cumplido</span></div><div className="summary-lines"><p><span>Tareas pendientes</span><strong>{day.tasks.filter((task) => !task.completed).length}</strong></p><p><span>Minutos de enfoque</span><strong>{tracked}</strong></p><p><span>Subtareas completadas</span><strong>{day.tasks.flatMap((task) => task.subtasks).filter((item) => item.completed).length}</strong></p></div><textarea aria-label="Notas del día" maxLength={LIMITS.note} value={day.notes} onChange={(event) => setDay((data) => ({ ...data, notes: event.target.value }))} placeholder="Notas y reflexiones del día…"/></section>
-}
-
-function Reports({ selectedDate }: { selectedDate: string }) {
-  const days = Array.from({ length: 30 }, (_, index) => { const date = new Date(`${selectedDate}T12:00:00`); date.setDate(date.getDate() - (29 - index)); const key = new Intl.DateTimeFormat('sv-SE').format(date); const data = repository.getDay(key); const total = data.tasks.length + data.habits.length; return { key, score: total ? Math.round((data.tasks.filter((t) => t.completed).length + data.habits.filter((h) => h.completed).length) / total * 100) : 0 } })
-  const weekly = days.slice(-7), average = Math.round(days.reduce((sum, item) => sum + item.score, 0) / days.length)
-  return <div className="reports-grid"><section className="panel report-hero"><div><p>PROMEDIO MENSUAL</p><strong>{average}%</strong><span>Tu consistencia durante los últimos 30 días</span></div><TrendingUp size={50}/></section><section className="panel chart-panel"><div className="panel-title"><div><span className="icon-box blue"><BarChart3 size={17}/></span><div><h2>Resumen semanal</h2><p>Porcentaje de cumplimiento por día</p></div></div></div><div className="bars">{weekly.map((item) => <div key={item.key}><span><i style={{ height: `${Math.max(4, item.score)}%` }}/></span><small>{new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(new Date(`${item.key}T12:00:00`)).slice(0, 2)}</small><em>{item.score}%</em></div>)}</div></section><section className="panel heat-panel"><div className="panel-title"><div><span className="icon-box green"><Zap size={17}/></span><div><h2>Actividad mensual</h2><p>Últimos 30 días</p></div></div></div><div className="heatmap">{days.map((item) => <i key={item.key} title={`${item.key}: ${item.score}%`} style={{ opacity: .12 + item.score / 115 }}/>)}</div></section></div>
 }
 
 export default App
