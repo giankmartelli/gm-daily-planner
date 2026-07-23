@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+work
+outputs
+backups
+.git
+.codex
+.agents
+*.log
