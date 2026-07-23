@@ -17,10 +17,21 @@ export type UserPlanningProfile = {
   planningStyle: 'structured' | 'balanced' | 'flexible'
   deepWorkCapacity: number
   breakFrequency: number
+  workingDays: number[]
+  workStartTime: string
+  workEndTime: string
+  lunchStartTime?: string
+  lunchDurationMinutes?: number
+  energyProfile: { morning: 'baja' | 'media' | 'alta'; afternoon: 'baja' | 'media' | 'alta'; evening: 'baja' | 'media' | 'alta' }
+  maximumFocusMinutes: number
+  preferredBreakMinutes: number
+  schedulingStyle: 'equilibrado' | 'intensivo' | 'flexible' | 'conservador'
 }
 
 export const defaultPlanningProfile = (timezone = Intl.DateTimeFormat().resolvedOptions().timeZone): UserPlanningProfile => ({
   wakeTime: '07:00', sleepTime: '22:30', workingHours: { from: '08:00', until: '18:00' }, preferredFocusBlocks: [90, 75], lunchTime: { from: '12:00', until: '13:00' },
   energyCurve: [{ from: '07:00', until: '10:00', energy: 'High' }, { from: '10:00', until: '12:00', energy: 'Medium' }, { from: '13:00', until: '15:00', energy: 'Low' }, { from: '15:00', until: '18:00', energy: 'High' }, { from: '18:00', until: '22:00', energy: 'Medium' }],
   chronotype: 'balanced', timezone, workDays: [1, 2, 3, 4, 5], preferredTaskLength: 45, notificationStyle: 'balanced', planningStyle: 'balanced', deepWorkCapacity: 180, breakFrequency: 90,
+  workingDays: [1,2,3,4,5], workStartTime:'08:00', workEndTime:'18:00', lunchStartTime:'12:00', lunchDurationMinutes:60,
+  energyProfile:{morning:'alta',afternoon:'media',evening:'baja'}, maximumFocusMinutes:90, preferredBreakMinutes:15, schedulingStyle:'equilibrado',
 })

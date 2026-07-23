@@ -1,5 +1,5 @@
 import type { PlanDayCommand } from '../../application/commands/PlannerCommands'
-import type { BusyBlock, PlanResult, PlannedBlock } from '../entities/Planning'
+import type { BusyBlock, PlanResult, PlannedBlock, PlanningConflict } from '../entities/Planning'
 import type { PlannerTask, PreferredPeriod } from '../entities/PlannerTask'
 import { TaskRanker } from '../ranking/TaskRanker'
 import { DEFAULT_PLANNER_CONFIG, type PlannerConfig } from '../rules/PlannerConfig'
@@ -17,15 +17,35 @@ export class DayScheduler {
     if (!Number.isFinite(from) || !Number.isFinite(until) || from >= until) throw new Error('El horario laboral del perfil no es válido.')
     const lunch: BusyBlock = { id: `lunch:${command.date}`, title: 'Almuerzo', start: command.profile.lunchTime.from, end: command.profile.lunchTime.until, locked: true, kind: 'break' }
     const events = command.events ?? []
+    const conflicts: PlanningConflict[] = []
+    const fixedTasks = command.tasks.filter((task) => !task.completed && task.status !== 'cancelled' && (task.fixedStartAt || task.flexibility === 'fija'))
+      .flatMap((task): BusyBlock[] => {
+        if (!task.fixedStartAt) return []
+        const start = task.fixedStartAt.includes('T') ? task.fixedStartAt.slice(11,16) : task.fixedStartAt.slice(0,5)
+        const startMinute = toMinutes(start)
+        const endMinute = startMinute + task.remainingMinutes
+        if (!Number.isFinite(startMinute) || startMinute < from || endMinute > until) {
+          conflicts.push({type:'outside_hours',taskId:task.id,message:`${task.title} queda fuera del horario laboral.`})
+          return []
+        }
+        const interval={start:startMinute,end:endMinute}
+        if (events.some(event=>overlaps(interval,{start:toMinutes(event.start),end:toMinutes(event.end)}))) {
+          conflicts.push({type:'overlap',taskId:task.id,message:`${task.title} se solapa con un evento confirmado.`})
+          return []
+        }
+        return [{id:`fixed:${task.id}:${command.date}`,taskId:task.id,title:task.title,start,end:toTime(endMinute),locked:true,kind:'task'}]
+      })
     const lunchInterval = { start: toMinutes(lunch.start), end: toMinutes(lunch.end) }
     const lunchIsCovered = events.some((event) => overlaps(
       { start: toMinutes(event.start), end: toMinutes(event.end) },
       lunchInterval,
     ))
-    const fixed = lunchIsCovered ? events : [...events, lunch]
+    const baseFixed = [...events,...fixedTasks]
+    const fixed = lunchIsCovered ? baseFixed : [...baseFixed, lunch]
     const occupied: Interval[] = fixed.map((item) => ({ start: toMinutes(item.start), end: toMinutes(item.end) })).filter((item) => Number.isFinite(item.start) && Number.isFinite(item.end) && item.end > item.start)
     const completed = new Set(command.tasks.filter((task) => task.completed).map((task) => task.id))
-    const ranked = this.ranker.rank(command.tasks, { date: command.date, time: command.now ?? command.profile.workingHours.from, completedTaskIds: completed, profile: command.profile, goals: command.goals, habitsCompleted: command.habits?.filter((habit) => habit.completed).length })
+    const fixedIds=new Set(fixedTasks.flatMap(block=>block.taskId?[block.taskId]:[]))
+    const ranked = this.ranker.rank(command.tasks.filter(task=>task.status!=='cancelled'&&!fixedIds.has(task.id)), { date: command.date, time: command.now ?? command.profile.workingHours.from, completedTaskIds: completed, profile: command.profile, goals: command.goals, habitsCompleted: command.habits?.filter((habit) => habit.completed).length })
     const blocks: PlannedBlock[] = fixed.map((item) => ({ ...item, durationMinutes: toMinutes(item.end) - toMinutes(item.start), energy: this.energy.energyAt(item.start, command.profile), score: 1, confidence: 1, reason: ['Bloque existente protegido'], risk: 0 }))
     const unscheduledTasks: PlannerTask[] = []; let previousContext = ''
     for (let index = 0; index < ranked.length; index += 1) {
@@ -39,18 +59,21 @@ export class DayScheduler {
         break
       }
       const preference = periodBounds[task.preferredPeriod]
-      const candidates = gaps.flatMap((gap) => { const start = Math.max(gap.start, preference.start); const end = Math.min(gap.end, preference.end); return start + task.estimatedMinutes <= end ? [{ start, end: start + task.estimatedMinutes }] : task.preferredPeriod === 'any' && gap.start + task.estimatedMinutes <= gap.end ? [{ start: gap.start, end: gap.start + task.estimatedMinutes }] : [] })
+      const duration=task.remainingMinutes
+      const earliest=task.earliestStartAt ? toMinutes(task.earliestStartAt.includes('T')?task.earliestStartAt.slice(11,16):task.earliestStartAt.slice(0,5)) : from
+      const candidates = gaps.flatMap((gap) => { const start = Math.max(gap.start, preference.start, earliest); const end = Math.min(gap.end, preference.end); return start + duration <= end ? [{ start, end: start + duration }] : task.preferredPeriod === 'any' && start + duration <= gap.end ? [{ start, end: start + duration }] : [] })
       if (!candidates.length) { unscheduledTasks.push(task); continue }
       const best = candidates.map((slot) => { const energy = this.energy.compatibility(task, toTime(slot.start), command.profile); const contextPenalty = previousContext && previousContext !== task.context ? this.config.contextSwitchPenalty : 0; const fragment = gaps.find((gap) => gap.start <= slot.start && gap.end >= slot.end); const fragmentationPenalty = fragment && fragment.end - slot.end > 0 && fragment.end - slot.end < this.config.minimumTaskMinutes ? this.config.fragmentationPenalty : 0; return { slot, quality: scored.total + energy * this.config.weights.energy - contextPenalty - fragmentationPenalty } }).sort((a, b) => b.quality - a.quality || a.slot.start - b.slot.start)[0]
       occupied.push(best.slot); previousContext = task.context
       const risk = Math.max(0, 1 - best.quality)
-      blocks.push({ id: `task:${task.id}:${command.date}`, taskId: task.id, title: task.title, start: toTime(best.slot.start), end: toTime(best.slot.end), durationMinutes: task.estimatedMinutes, energy: this.energy.energyAt(toTime(best.slot.start), command.profile), score: scored.total, confidence: Math.max(.35, Math.min(.98, best.quality)), reason: scored.reasons, risk, kind: 'task' })
+      blocks.push({ id: `task:${task.id}:${command.date}`, taskId: task.id, title: task.title, start: toTime(best.slot.start), end: toTime(best.slot.end), durationMinutes: duration, energy: this.energy.energyAt(toTime(best.slot.start), command.profile), score: scored.total, confidence: Math.max(.35, Math.min(.98, best.quality)), reason: scored.reasons, risk, kind: 'task' })
     }
     const taskBlocks = blocks.filter((block) => block.kind === 'task')
     const planned = taskBlocks.reduce((sum, block) => sum + block.durationMinutes, 0)
     const available = subtractIntervals({ start: from, end: until }, fixed.map((item) => ({ start: toMinutes(item.start), end: toMinutes(item.end) }))).reduce((sum, gap) => sum + gap.end - gap.start, 0)
     const confidence = taskBlocks.length ? taskBlocks.reduce((sum, block) => sum + block.confidence, 0) / taskBlocks.length : 0
     const risk = unscheduledTasks.length / Math.max(1, ranked.length)
-    return { date: command.date, blocks: blocks.sort((a, b) => a.start.localeCompare(b.start)), unscheduledTasks, totalPlannedMinutes: planned, freeMinutes: Math.max(0, available - planned), confidence, risk, explanation: [`${planned} minutos planificados según prioridad, energía y disponibilidad.`, `${unscheduledTasks.length} tareas quedaron fuera sin perderse.`], generatedAt: new Date().toISOString() }
+    if(unscheduledTasks.length)conflicts.push({type:'capacity',message:`${unscheduledTasks.length} tareas no caben en la disponibilidad actual.`})
+    return { proposalId:crypto.randomUUID(), date: command.date, blocks: blocks.sort((a, b) => a.start.localeCompare(b.start)), unscheduledTasks, totalAvailableMinutes:available, totalPlannedMinutes: planned, freeMinutes: Math.max(0, available - planned), remainingFreeMinutes:Math.max(0,available-planned), conflicts, confidence, risk, riskScore:Math.round(risk*100), explanation: [`${planned} minutos planificados según prioridad, energía y disponibilidad.`, `${unscheduledTasks.length} tareas quedaron fuera sin perderse.`, 'La propuesta no modifica datos hasta que el usuario la confirma.'], generatedAt: new Date().toISOString() }
   }
 }
