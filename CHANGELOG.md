@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-23 — GM AI OS
+
+- AI Core con interfaces comunes, dependency injection, eventos y repositorios.
+- Decision, Energy, Prediction, Morning Brief, Auto Scheduler, Learning y Executive Analytics Engines.
+- Dashboard ejecutivo ligero con señales reales y procedencia explícita.
+- Outcomes locales aislados por usuario.
+
 ## 2026-07-23 — Product Experience 2026
 
 ### Added

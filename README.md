@@ -111,6 +111,15 @@ El planificador inteligente funciona localmente con reglas determinísticas, sin
 
 La experiencia AI-first usa procedencia explícita, propuestas auditables, confirmación previa, idempotencia y deshacer. Se activa con `VITE_FEATURE_AI_FIRST_PLANNER=true` y puede deshabilitarse rápidamente con `false`. No existe aún un proveedor remoto configurado: clima y sueño se muestran como no disponibles y nunca se inventan.
 
+## GM AI OS
+
+El núcleo modular vive en `src/core/ai`. Incluye Decision, Energy, Prediction, Morning Brief, Auto Scheduler, Learning y Executive Analytics bajo contratos comunes e inyección de dependencias.
+
+- [AI Core](docs/AI.md)
+- [Motores](docs/ENGINES.md)
+- [Aprendizaje](docs/LEARNING.md)
+- [Decision Engine](docs/DECISION_ENGINE.md)
+
 ```bash
 pnpm test:planner:coverage
 ```

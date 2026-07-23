@@ -1,5 +1,25 @@
 # Arquitectura de GM Daily Planner
 
+## GM AI OS
+
+`src/core/ai` aplica Clean Architecture: dominio y motores puros en el centro; proveedores, repositorios, eventos, casos de uso y UI como adaptadores.
+
+```mermaid
+flowchart LR
+  UI["React / PWA"] --> UC["BuildDailyIntelligence"]
+  UC --> P["PlannerEngine"]
+  P --> MB["Morning Brief"]
+  P --> D["Decision"]
+  P --> E["Energy"]
+  P --> PR["Prediction"]
+  P --> X["Executive Analytics"]
+  S["AutoScheduler"] --> PP["PlanProposal"]
+  PP --> C{"Confirmación"}
+  C -->|Aplicar| R["Local + Supabase"]
+  C -->|Descartar| N["Sin cambios"]
+  O["PlanOutcome"] --> L["LearningEngine"]
+```
+
 ```mermaid
 flowchart TB
   UI["React · producto y marketing"] --> APP["Casos de uso"]
@@ -14,6 +34,7 @@ flowchart TB
 ## Capas
 
 - `src/domain`: modelos y funciones puras sin React ni red.
+- `src/core/ai`: GM AI OS modular, inyectable y event-driven.
 - `src/planner`: Clean Architecture para planificación determinística.
 - `src/data`: repositorio offline y reconciliación por fecha de actualización.
 - `src/services`: orquestación de sincronización.
