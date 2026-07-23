@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:planner:coverage": "vitest run src/planner --coverage --coverage.include=src/planner/**/*.ts --coverage.exclude=src/planner/**/*.test.ts",
     "test:e2e": "node scripts/e2e-smoke.mjs",
+    "test:e2e:remote": "node scripts/e2e-ai-remote.mjs",
     "audit:security": "node scripts/security-audit.mjs",
     "backup": "node scripts/backup-supabase.mjs",
     "preview": "vite preview"
