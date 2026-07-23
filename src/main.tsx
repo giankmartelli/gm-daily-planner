@@ -7,17 +7,21 @@ import { initializeMonitoring, Sentry } from './lib/monitoring'
 // El punto de entrada define los límites de carga, no componentes reutilizables.
 // eslint-disable-next-line react-refresh/only-export-components
 const ProductApp = lazy(() => import('./App.tsx'))
+// El panel administrativo es un bundle y límite de autorización independiente.
+// eslint-disable-next-line react-refresh/only-export-components
+const AdminApp = lazy(() => import('./admin/AdminApp.tsx'))
 // eslint-disable-next-line react-refresh/only-export-components
 const MarketingSite = lazy(() => import('./marketing/MarketingSite').then((module) => ({ default: module.MarketingSite })))
 
 initializeMonitoring()
 const isProduct = window.location.pathname === '/app' || window.location.pathname.startsWith('/app/')
+const isAdmin = window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<main className="fatal-error"><h1>Algo salió mal</h1><p>Tus datos locales permanecen seguros. Recarga la aplicación para continuar.</p><button onClick={() => window.location.reload()}>Recargar</button></main>}>
       <Suspense fallback={<div className="route-loading" role="status" aria-label="Cargando GM Daily Planner" />}>
-        {isProduct ? <ProductApp /> : <MarketingSite />}
+        {isAdmin ? <AdminApp /> : isProduct ? <ProductApp /> : <MarketingSite />}
       </Suspense>
     </Sentry.ErrorBoundary>
   </StrictMode>,
