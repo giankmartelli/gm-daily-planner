@@ -2,8 +2,10 @@ import { Activity, AlertTriangle, BarChart3, Brain, CheckCircle2, Clock3, Downlo
 import { localPlannerRepository as repository } from '../data/plannerRepository'
 import { analyticsToCsv, buildProductivityAnalytics } from '../domain/analytics'
 import type { TimeSession } from '../domain/models'
+import type { PlanOutcome } from '../ai-planning/domain'
+import { ExecutiveDashboard } from '../core/ai/features/ExecutiveDashboard'
 
-type Props = { selectedDate: string; sessions: TimeSession[] }
+type Props = { selectedDate: string; sessions: TimeSession[]; userId?: string }
 
 const minutes = (value: number) => value >= 60 ? `${Math.floor(value / 60)}h ${value % 60}m` : `${value}m`
 
@@ -17,8 +19,15 @@ function downloadCsv(content: string) {
   URL.revokeObjectURL(url)
 }
 
-export function ReportsCenter({ selectedDate, sessions }: Props) {
+export function ReportsCenter({ selectedDate, sessions, userId }: Props) {
   const analytics = buildProductivityAnalytics({ selectedDate, getDay: repository.getDay, sessions })
+  const outcomePrefix = `gm-daily-planner:outcome:${userId ?? 'local'}:`
+  const outcomes = Object.keys(localStorage).filter((key) => key.startsWith(outcomePrefix)).flatMap((key) => {
+    try { return [JSON.parse(localStorage.getItem(key) ?? '') as PlanOutcome] } catch { return [] }
+  })
+  const history = repository.listDayKeys().filter((date) => date <= selectedDate).slice(-30).map((date) => ({ date, day: repository.getDay(date) }))
+  const current = repository.getDay(selectedDate)
+  const availableMinutes = Math.max(0, 480 - Object.values(current.schedule).filter((title) => title.trim()).length * 60)
   const month = analytics.points.slice(-30)
   const week = analytics.points.slice(-7)
   const kpis = [
@@ -30,6 +39,7 @@ export function ReportsCenter({ selectedDate, sessions }: Props) {
     { label: 'Promedio anual', value: `${analytics.annualAverage}%`, detail: `${analytics.monthlyAverage}% mensual`, icon: Activity, tone: 'blue' },
   ]
   return <div className="reports-center">
+    <ExecutiveDashboard context={{ date: selectedDate, day: current, goals: [], sessions, outcomes, history, availableMinutes }}/>
     <section className="reports-command">
       <div><p>PRODUCTIVITY INTELLIGENCE</p><h2>Entiende tu ritmo, no solo tus resultados.</h2><span>365 días de señales convertidas en decisiones claras.</span></div>
       <div><button onClick={() => downloadCsv(analyticsToCsv(analytics))}><Download size={15}/>Exportar CSV</button><button onClick={() => window.print()}><FileText size={15}/>Guardar PDF</button></div>
