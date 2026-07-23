@@ -33,6 +33,10 @@
 - React, TypeScript, Vite, Supabase, RLS, sincronización, PWA y diseño premium.
 # 2026-07-23
 
+- Añadida función server-side de IA con autenticación, rate limit, timeout, reintento, salida estructurada y fallback local.
+- Añadidos ajuste de hora/duración, rechazo, reordenamiento drag-and-drop y teclado con detección de conflictos.
+- Añadida revisión diaria de menos de un minuto y reglas adaptativas transparentes.
+- Añadido E2E remoto con dos usuarios para RLS, idempotencia, persistencia, rollback, outcome y expiración de sesión.
 - Añadido dominio AI Planning Engine con contexto, procedencia, propuestas y decisiones auditables.
 - Añadidos proveedores desacoplados y fallback determinístico.
 - Añadida ejecución idempotente, deshacer y telemetría sin datos personales.

@@ -33,6 +33,17 @@ VITE_FEATURE_AI_FIRST_PLANNER=true
 
 Nunca uses `SUPABASE_SERVICE_ROLE_KEY` en una variable `VITE_*`, en `.env.local` compartido con herramientas frontend ni en código dentro de `src/`. Esa clave solo se admite como variable del proceso backend al ejecutar manualmente el script de copias de seguridad.
 
+### Proveedor remoto opcional
+
+La aplicación funciona sin IA remota mediante el motor determinístico. Para habilitar explicaciones remotas, configura **exclusivamente en Vercel o en el entorno server-side**:
+
+```dotenv
+OPENAI_API_KEY=valor_secreto
+OPENAI_PLANNER_MODEL=gpt-5.6-sol
+```
+
+No uses el prefijo `VITE_`. El navegador llama a `/api/planner`, que valida la sesión Supabase, limita solicitudes por usuario, aplica timeout y reintentos limitados y valida la salida estructurada. Si falta la clave o el proveedor falla, se muestra y conserva el plan generado con motor local.
+
 ## Configurar Supabase y ejecutar migraciones
 
 La migración `supabase/migrations/202607210001_initial.sql` crea:
@@ -90,6 +101,7 @@ pnpm lint
 pnpm test
 pnpm build
 pnpm test:e2e
+VITE_SUPABASE_URL=... VITE_SUPABASE_ANON_KEY=... SUPABASE_SERVICE_ROLE_KEY=... pnpm test:e2e:remote
 pnpm audit --audit-level=low
 ```
 
