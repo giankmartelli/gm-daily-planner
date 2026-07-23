@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js'
 import { BarChart3, Bell, CalendarDays, CheckCircle2, ChevronRight, Clock3, Cloud, CloudOff, Download, Focus, Goal as GoalIcon, Home, ListTodo, LogOut, Menu, Monitor, Moon, Plus, Search, Settings, Sun, Target, TrendingUp, X, Zap } from 'lucide-react'
 import { AuthDialog } from './components/AuthDialog'
 import { CalendarPanel } from './components/CalendarPanel'
+import { CommandPalette } from './components/CommandPalette'
 import { DashboardOverview } from './components/DashboardOverview'
 import { ProductivityTimer } from './components/ProductivityTimer'
 import { ReportsCenter } from './components/ReportsCenter'
@@ -51,6 +52,7 @@ function dayScore(data: DayData) {
 function App() {
   const [view, setView] = useState<ViewMode>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [commandOpen, setCommandOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState(todayKey)
   const [day, setDay] = useState<DayData>(() => loadDayWithRecurrence(todayKey()))
   const [workspace, setWorkspace] = useState<WorkspaceData>(repository.getWorkspace)
@@ -91,7 +93,14 @@ function App() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', resolved === 'dark' ? colors.neutral[950] : colors.neutral[50])
   }, [systemDark, theme])
   useEffect(() => { const handler = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPrompt) }; window.addEventListener('beforeinstallprompt', handler); return () => window.removeEventListener('beforeinstallprompt', handler) }, [])
-  useEffect(() => { const handler = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); document.querySelector<HTMLInputElement>('.search input')?.focus() } }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler) }, [])
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setCommandOpen((open) => !open) }
+      if (event.key === 'Escape') setCommandOpen(false)
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
   useEffect(() => {
     if (!supabase) return
     let active = true
@@ -184,6 +193,8 @@ function App() {
     { id: 'calendar' as const, label: 'Calendario', icon: CalendarDays }, { id: 'focus' as const, label: 'Enfoque', icon: Focus }, { id: 'reports' as const, label: 'Informes', icon: BarChart3 },
   ]
   const formatted = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${selectedDate}T12:00:00`))
+  const cycleTheme = useCallback(() => setTheme((current) => current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light'), [])
+  const openNewTask = useCallback(() => { setView('tasks'); window.setTimeout(() => document.getElementById('task-title')?.focus(), 0) }, [])
 
   return <div className="product-shell">
     <div className={`mobile-shade ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
@@ -195,10 +206,10 @@ function App() {
     </aside>
 
     <main className="workspace">
-      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><kbd>⌘ K</kbd></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')} aria-label={theme === 'light' ? 'Activar modo oscuro' : theme === 'dark' ? 'Usar tema del sistema' : 'Activar modo claro'} title={`Tema: ${theme === 'light' ? 'Claro' : theme === 'dark' ? 'Oscuro' : 'Sistema'}`}>{theme === 'light' ? <Moon size={18}/> : theme === 'dark' ? <Monitor size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
+      <header className="app-header"><button className="menu-button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú"><Menu size={20}/></button><div className="search"><Search size={16}/><input value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar tareas, etiquetas…" aria-label="Buscar"/><button onClick={() => setCommandOpen(true)} aria-label="Abrir comandos rápidos"><kbd>⌘ K</kbd></button></div><div className="header-actions"><span className={`sync-indicator ${syncState}`} title={syncState === 'synced' ? 'Sincronizado' : syncState === 'syncing' ? 'Sincronizando' : 'Datos locales'}>{syncState === 'error' ? <CloudOff size={15}/> : <Cloud size={15}/>}</span><button onClick={() => setMessage('Los recordatorios activos aparecerán como notificaciones del sistema.')} aria-label="Notificaciones"><Bell size={18}/><i/></button><button onClick={cycleTheme} aria-label={theme === 'light' ? 'Activar modo oscuro' : theme === 'dark' ? 'Usar tema del sistema' : 'Activar modo claro'} title={`Tema: ${theme === 'light' ? 'Claro' : theme === 'dark' ? 'Oscuro' : 'Sistema'}`}>{theme === 'light' ? <Moon size={18}/> : theme === 'dark' ? <Monitor size={18}/> : <Sun size={18}/>}</button><button className="avatar" onClick={() => user ? setMessage(`Sesión activa: ${user.email ?? 'usuario autenticado'}`) : setAuthOpen(true)} aria-label={user ? 'Cuenta sincronizada' : 'Conectar cuenta'}>{user ? user.email?.slice(0, 2).toUpperCase() : 'GM'}</button></div></header>
 
       <div className="content">
-        <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={() => { setView('tasks'); setTimeout(() => document.getElementById('task-title')?.focus(), 0) }}><Plus size={16}/>Nueva tarea</button></div>
+        <div className="page-heading"><div><p>{formatted.toUpperCase()}</p><h1>{view === 'dashboard' ? 'Buenos días, construyamos un gran día.' : nav.find((item) => item.id === view)?.label}</h1><span>{view === 'dashboard' ? 'Claridad, enfoque y progreso en un solo lugar.' : 'Todo organizado para que avances sin fricción.'}</span></div><button className="new-task" onClick={openNewTask}><Plus size={16}/>Nueva tarea</button></div>
 
         {view === 'dashboard' && <>
           <DashboardOverview date={selectedDate} day={day} goals={workspace.goals} score={score} trackedMinutes={tracked} streak={streak} weeklyScores={weeklyScores} monthlyScore={monthlyScore}/>
@@ -215,6 +226,7 @@ function App() {
     </main>
     {message && <div className="toast" role="status"><span>{message}</span><button onClick={() => setMessage('')} aria-label="Cerrar mensaje"><X size={14}/></button></div>}
     {installHelp && <div className="modal-shade" onMouseDown={() => setInstallHelp(false)}><section className="install-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button onClick={() => setInstallHelp(false)} aria-label="Cerrar"><X/></button><img src="/icons/icon-192.png" alt="GM Daily Planner"/><h2>Instala GM Daily Planner</h2><p>En iPhone usa Compartir → Agregar a inicio. En Mac, Windows o Android abre el menú del navegador y selecciona Instalar.</p><button className="primary" onClick={() => setInstallHelp(false)}>Entendido</button></section></div>}
+    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onNavigate={setView} onNewTask={openNewTask} onToggleTheme={cycleTheme}/>
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)}/>
   </div>
 }

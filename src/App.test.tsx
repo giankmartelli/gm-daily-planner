@@ -130,4 +130,13 @@ describe('GM Daily Planner Pro', () => {
       expect(login).toBeDisabled()
     }
   })
+
+  it('abre comandos rápidos con el teclado y navega sin ratón', () => {
+    render(<App />)
+    fireEvent.keyDown(window, { key: 'k', metaKey: true })
+    expect(screen.getByRole('dialog', { name: 'Comandos rápidos' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Buscar comando'), { target: { value: 'Informes' } })
+    fireEvent.click(screen.getByRole('button', { name: /Ver Informes/ }))
+    expect(screen.getByText('Entiende tu ritmo, no solo tus resultados.')).toBeInTheDocument()
+  })
 })

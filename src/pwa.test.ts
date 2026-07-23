@@ -7,6 +7,7 @@ describe('PWA', () => {
     expect(manifest.display).toBe('standalone')
     expect(manifest.icons.some((icon: { purpose?: string }) => icon.purpose === 'maskable')).toBe(true)
     expect(manifest.start_url).toBe('/app')
+    expect(manifest.shortcuts).toHaveLength(3)
   })
 
   it('mantiene caché offline y actualización de versiones', () => {
@@ -14,5 +15,7 @@ describe('PWA', () => {
     expect(worker).toContain("caches.open(CACHE)")
     expect(worker).toContain("SKIP_WAITING")
     expect(worker).toContain("event.request.mode === 'navigate'")
+    expect(worker).toContain("addEventListener('push'")
+    expect(worker).toContain("addEventListener('notificationclick'")
   })
 })

@@ -18,6 +18,8 @@
     { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Planificar hoy", "short_name": "Hoy", "url": "/app", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Planificar hoy", "short_name": "Hoy", "url": "/app", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Nueva tarea", "short_name": "Tarea", "url": "/app?action=new-task", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Iniciar enfoque", "short_name": "Enfoque", "url": "/app?view=focus", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

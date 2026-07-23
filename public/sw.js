@@ -1,4 +1,4 @@
-const CACHE = 'gm-daily-planner-v7'
+const CACHE = 'gm-daily-planner-v8'
 const APP_SHELL = ['/', '/app', '/manifest.webmanifest', '/brand/logo-mark.svg', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png']
 
 self.addEventListener('install', (event) => {
@@ -26,4 +26,21 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
+})
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+  const payload = event.data.json()
+  event.waitUntil(self.registration.showNotification(payload.title || 'GM Daily Planner', {
+    body: payload.body || 'Tu planificación necesita atención.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: payload.url || '/app' },
+    tag: payload.tag || 'gm-planner',
+  }))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  event.waitUntil(self.clients.openWindow(event.notification.data?.url || '/app'))
 })
