@@ -71,6 +71,7 @@ function App() {
   const [authOpen, setAuthOpen] = useState(false)
   const [syncState, setSyncState] = useState<SyncState>('local')
   const [syncReady, setSyncReady] = useState(false)
+  const [previousSchedule, setPreviousSchedule] = useState<Record<string, string> | null>(null)
   const selectedDateRef = useRef(selectedDate)
   const connectionVersionRef = useRef(0)
   const markSyncSuccess = () => setSyncState((current) => current === 'error' ? 'error' : 'synced')
@@ -180,9 +181,18 @@ function App() {
   }
   const addSession = useCallback((minutes: number) => setWorkspace((data) => ({ ...data, sessions: [...data.sessions, { id: uid(), minutes, date: selectedDate }] })), [selectedDate])
   const applyPlan = (blocks: PlannedBlock[]) => {
-    setDay((data) => ({ ...data, schedule: applySmartPlan(data.schedule, blocks) }))
+    setDay((data) => {
+      setPreviousSchedule(data.schedule)
+      return { ...data, schedule: applySmartPlan(data.schedule, blocks) }
+    })
     setMessage(`${blocks.length} bloque(s) añadidos a tu agenda. Guardando cambios…`)
   }
+  const undoPlan = useCallback(() => {
+    if (!previousSchedule) return setMessage('No hay un plan reciente para deshacer.')
+    setDay((data) => ({ ...data, schedule: previousSchedule }))
+    setPreviousSchedule(null)
+    setMessage('Se restauró la agenda anterior.')
+  }, [previousSchedule])
 
   const install = async () => { if (!installPrompt) return setInstallHelp(true); await installPrompt.prompt(); await installPrompt.userChoice; setInstallPrompt(null) }
   const addHabit = (event: FormEvent) => { event.preventDefault(); const name = newHabit.trim(); if (!name) return setMessage('Escribe un nombre para el hábito.'); if (day.habits.some((habit) => habit.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return setMessage('Ese hábito ya existe.'); setDay((data) => ({ ...data, habits: [...data.habits, { id: uid(), name, completed: false }] })); setNewHabit(''); setMessage('Hábito creado.') }
@@ -226,7 +236,7 @@ function App() {
     </main>
     {message && <div className="toast" role="status"><span>{message}</span><button onClick={() => setMessage('')} aria-label="Cerrar mensaje"><X size={14}/></button></div>}
     {installHelp && <div className="modal-shade" onMouseDown={() => setInstallHelp(false)}><section className="install-modal" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}><button onClick={() => setInstallHelp(false)} aria-label="Cerrar"><X/></button><img src="/icons/icon-192.png" alt="GM Daily Planner"/><h2>Instala GM Daily Planner</h2><p>En iPhone usa Compartir → Agregar a inicio. En Mac, Windows o Android abre el menú del navegador y selecciona Instalar.</p><button className="primary" onClick={() => setInstallHelp(false)}>Entendido</button></section></div>}
-    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onNavigate={setView} onNewTask={openNewTask} onToggleTheme={cycleTheme}/>
+    <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} onNavigate={setView} onNewTask={openNewTask} onToggleTheme={cycleTheme} onPlanDay={() => { setView('dashboard'); window.setTimeout(() => window.dispatchEvent(new Event('gm:open-planner')), 0) }} onUndoPlan={undoPlan}/>
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)}/>
   </div>
 }

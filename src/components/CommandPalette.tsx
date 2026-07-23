@@ -8,19 +8,28 @@ type Props = {
   onNavigate: (view: ViewMode) => void
   onNewTask: () => void
   onToggleTheme: () => void
+  onPlanDay: () => void
+  onUndoPlan: () => void
 }
 
-export function CommandPalette({ open, onClose, onNavigate, onNewTask, onToggleTheme }: Props) {
+export function CommandPalette({ open, onClose, onNavigate, onNewTask, onToggleTheme, onPlanDay, onUndoPlan }: Props) {
   const [query, setQuery] = useState('')
   const commands = useMemo(() => [
     { label: 'Crear una tarea', hint: 'N', icon: Plus, action: onNewTask },
+    { label: 'Planificar mi día', hint: 'P', icon: Focus, action: onPlanDay },
+    { label: 'Replanificar lo pendiente', hint: 'R P', icon: CalendarDays, action: onPlanDay },
+    { label: 'Proteger 90 minutos de enfoque', hint: 'F 9', icon: Focus, action: onPlanDay },
+    { label: 'Mostrar tareas en riesgo', hint: 'R', icon: BarChart3, action: () => onNavigate('tasks') },
+    { label: 'Reducir mi carga', hint: 'L', icon: ListTodo, action: onPlanDay },
+    { label: 'Preparar mañana', hint: 'M', icon: CalendarDays, action: () => onNavigate('calendar') },
+    { label: 'Deshacer último plan', hint: '⌘ Z', icon: X, action: onUndoPlan },
     { label: 'Ir a Inicio', hint: 'G I', icon: Home, action: () => onNavigate('dashboard') },
     { label: 'Ir a Mis tareas', hint: 'G T', icon: ListTodo, action: () => onNavigate('tasks') },
     { label: 'Abrir Calendario', hint: 'G C', icon: CalendarDays, action: () => onNavigate('calendar') },
     { label: 'Entrar en Enfoque', hint: 'G F', icon: Focus, action: () => onNavigate('focus') },
     { label: 'Ver Informes', hint: 'G R', icon: BarChart3, action: () => onNavigate('reports') },
     { label: 'Cambiar apariencia', hint: 'T', icon: document.documentElement.dataset.theme === 'dark' ? Sun : Moon, action: onToggleTheme },
-  ], [onNavigate, onNewTask, onToggleTheme])
+  ], [onNavigate, onNewTask, onPlanDay, onToggleTheme, onUndoPlan])
   const filtered = commands.filter((command) => command.label.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
   if (!open) return null
   const run = (action: () => void) => { action(); setQuery(''); onClose() }
