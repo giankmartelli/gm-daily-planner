@@ -92,6 +92,14 @@ pnpm test:e2e
 pnpm audit --audit-level=low
 ```
 
+## Planner AI Engine
+
+El planificador inteligente funciona localmente con reglas determinísticas, sin APIs de IA ni transmisión de tareas a terceros. Su arquitectura, API pública, reglas, benchmark y estrategia de evolución están documentados en [docs/PLANNER-AI-ENGINE.md](docs/PLANNER-AI-ENGINE.md).
+
+```bash
+pnpm test:planner:coverage
+```
+
 `test:e2e` espera por defecto una aplicación activa en `http://127.0.0.1:5173`. Usa `E2E_BASE_URL` para otra dirección.
 
 ## Checklist manual
