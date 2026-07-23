@@ -169,3 +169,11 @@ Los archivos se guardan en `backups/`, carpeta ignorada por Git, con permisos de
 - **Failed to fetch / CORS:** verifica la URL del proyecto y que el proyecto de Supabase esté activo.
 - **No sincroniza:** ejecuta la migración, confirma que RLS y Realtime están activos y revisa la consola.
 - **La migración no aparece:** confirma el vínculo con `pnpm dlx supabase@latest projects list` y vuelve a ejecutar `db push --dry-run`.
+## GM Control Center
+
+El centro operativo vive en `/admin` y utiliza RBAC respaldado por Supabase RLS.
+Consulta [la guía administrativa](docs/ADMIN_GUIDE.md), la [matriz RBAC](docs/RBAC.md)
+y la documentación de [feature flags](docs/FEATURE_FLAGS.md).
+
+La migración no asigna automáticamente un superadministrador. El primer rol debe
+asociarse manualmente a un UUID verificado siguiendo la guía.

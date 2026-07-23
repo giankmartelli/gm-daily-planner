@@ -50,3 +50,11 @@
 - Eliminados clima ficticio y energía presentada como hecho confirmado.
 - Añadida migración aditiva con RLS para propuestas, decisiones, planes y outcomes.
 - Ampliado Command Center con acciones de planificación.
+## GM Control Center
+
+- Panel `/admin` aislado del producto.
+- Cinco roles con permisos granulares y 403 seguro.
+- Dashboard, Beta Manager, usuarios, flags, feedback, anuncios, errores,
+  actividad, analytics, AI Admin, seguridad y configuración.
+- Tablas administrativas, RLS forzada, auditoría reversible y métricas agregadas.
+- Documentación operativa, RBAC, flags, beta y analytics.
