@@ -26,6 +26,7 @@ Edita `.env.local`:
 VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
 VITE_SUPABASE_ANON_KEY=TU_CLAVE_ANON_O_PUBLISHABLE
 VITE_SENTRY_DSN=
+VITE_FEATURE_AI_FIRST_PLANNER=true
 ```
 
 `VITE_SENTRY_DSN` es opcional. Obtén la URL y la clave pública desde **Supabase → Project Settings → API**. La aplicación valida las dos variables obligatorias y continúa de forma segura en modo local si faltan.
@@ -95,6 +96,8 @@ pnpm audit --audit-level=low
 ## Planner AI Engine
 
 El planificador inteligente funciona localmente con reglas determinísticas, sin APIs de IA ni transmisión de tareas a terceros. Su arquitectura, API pública, reglas, benchmark y estrategia de evolución están documentados en [docs/PLANNER-AI-ENGINE.md](docs/PLANNER-AI-ENGINE.md).
+
+La experiencia AI-first usa procedencia explícita, propuestas auditables, confirmación previa, idempotencia y deshacer. Se activa con `VITE_FEATURE_AI_FIRST_PLANNER=true` y puede deshabilitarse rápidamente con `false`. No existe aún un proveedor remoto configurado: clima y sueño se muestran como no disponibles y nunca se inventan.
 
 ```bash
 pnpm test:planner:coverage

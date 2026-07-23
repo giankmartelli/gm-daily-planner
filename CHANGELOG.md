@@ -31,3 +31,11 @@
 ## 2026-07-21 — Foundation
 
 - React, TypeScript, Vite, Supabase, RLS, sincronización, PWA y diseño premium.
+# 2026-07-23
+
+- Añadido dominio AI Planning Engine con contexto, procedencia, propuestas y decisiones auditables.
+- Añadidos proveedores desacoplados y fallback determinístico.
+- Añadida ejecución idempotente, deshacer y telemetría sin datos personales.
+- Eliminados clima ficticio y energía presentada como hecho confirmado.
+- Añadida migración aditiva con RLS para propuestas, decisiones, planes y outcomes.
+- Ampliado Command Center con acciones de planificación.
