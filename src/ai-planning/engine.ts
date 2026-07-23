@@ -85,6 +85,6 @@ export function createPlanProposal({ context, availableFrom, availableUntil, ene
       '35% historial de cumplimiento (65% neutral si aún no existe historial).',
       'Ajustes explícitos por vencidas, complejidad, fragmentación, energía, cambios de contexto y margen de seguridad.',
     ],
-    status: 'draft', context,
+    status: 'draft', context, provider: 'local',
   }
 }

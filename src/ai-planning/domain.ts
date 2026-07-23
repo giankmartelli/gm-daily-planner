@@ -66,11 +66,26 @@ export type PlanProposal = {
   probabilityExplanation: string[]
   status: 'draft' | 'reviewed' | 'accepted' | 'rejected' | 'applied'
   context: PlanningContext
+  provider?: 'local' | 'remote'
 }
 
 export type PlanningDecision = { id: string; proposalId: string; changeId: string; decision: 'accepted' | 'modified' | 'rejected'; decidedAt: string }
 export type AppliedPlan = { id: string; proposalId: string; date: string; appliedAt: string; idempotencyKey: string; before: DayData; after: DayData; status: 'applied' | 'reverted' }
-export type PlanOutcome = { id: string; appliedPlanId: string; completedTaskIds: string[]; postponedTaskIds: string[]; energy?: EnergyLevel; realistic?: boolean; notes?: string; recordedAt: string }
+export type PlanOutcome = {
+  id: string
+  appliedPlanId: string
+  completedTaskIds: string[]
+  postponedTaskIds: string[]
+  actualMinutes: Record<string, number>
+  energy?: EnergyLevel
+  realistic?: boolean
+  usefulRecommendationIds: string[]
+  rejectedRecommendationIds: string[]
+  failureReason?: string
+  rating: 1 | 2 | 3 | 4 | 5
+  notes?: string
+  recordedAt: string
+}
 
 export interface ContextProvider<T> {
   isAvailable(): Promise<boolean>
