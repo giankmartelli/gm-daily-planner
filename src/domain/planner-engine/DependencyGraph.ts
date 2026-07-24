@@ -26,7 +26,7 @@ export class DependencyGraph {
     const queue = tasks.filter((task) => indegree.get(task.id) === 0).map((task) => task.id).sort()
     const orderedIds: string[] = []
     while (queue.length) {
-      const id = queue.shift()
+      const id = queue.shift()!
       orderedIds.push(id)
       for (const dependent of outgoing.get(id)!) {
         indegree.set(dependent, indegree.get(dependent)! - 1)
