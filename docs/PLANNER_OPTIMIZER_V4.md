@@ -100,7 +100,7 @@ Cada tarea devuelve:
 Metodología: calentamiento y mediana de cinco ejecuciones, sin instrumentación de cobertura.
 
 ```bash
-pnpm exec vitest run src/domain/planner-optimizer/PlannerOptimizerBenchmark.test.ts --reporter=verbose
+pnpm test:planner-v4:benchmark
 ```
 
 Presupuestos obligatorios:
