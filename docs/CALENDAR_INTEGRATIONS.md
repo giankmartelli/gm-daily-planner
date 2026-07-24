@@ -25,6 +25,11 @@ bytes. Los tokens se cifran con AES-256-GCM antes de enviarse a Supabase.
 
 ## Redirect URIs
 
+Desarrollo con `vercel dev`:
+
+- `http://localhost:3000/api/google-calendar-auth-callback`
+- `http://localhost:3000/api/microsoft-calendar-auth-callback`
+
 Para producción:
 
 - `https://gm-daily-planner.vercel.app/api/google-calendar-auth-callback`
@@ -32,6 +37,15 @@ Para producción:
 
 Si se valida un preview, debe registrarse explícitamente su dominio y
 `PUBLIC_SITE_URL` debe coincidir exactamente.
+
+El preview todavía no existe porque esta fase prohíbe desplegar. Por tanto, no es
+posible proporcionar honestamente una URI literal hasta que Vercel genere el
+dominio. En ese momento serán exactamente:
+
+- `https://DOMINIO_EXACTO_DEL_PREVIEW/api/google-calendar-auth-callback`
+- `https://DOMINIO_EXACTO_DEL_PREVIEW/api/microsoft-calendar-auth-callback`
+
+No se deben registrar comodines.
 
 ## Permisos
 
@@ -69,3 +83,40 @@ No se solicita escritura.
 5. Confirmar que bloquean tiempo sin convertirse en tareas.
 6. Revocar el consentimiento y validar el estado de error.
 7. Repetir con Outlook y Microsoft Graph.
+
+## Checklist Google Cloud
+
+1. Crear o seleccionar un proyecto exclusivo para GM Daily Planner.
+2. Configurar OAuth consent screen y datos públicos de soporte.
+3. Añadir solamente los usuarios de prueba autorizados mientras la aplicación
+   permanezca en modo Testing.
+4. Habilitar Google Calendar API.
+5. Crear credencial OAuth 2.0 de tipo Web application.
+6. Registrar cada redirect URI literal de desarrollo, preview y producción.
+7. Copiar Client ID y Client Secret únicamente a variables server-side.
+8. Confirmar que los scopes son `openid`, `email` y `calendar.readonly`.
+9. Completar consentimiento con una cuenta de prueba, nunca una cuenta personal.
+10. Sincronizar, modificar, eliminar y revocar un evento de prueba.
+
+## Checklist Microsoft Entra
+
+1. Crear una App registration dedicada.
+2. Seleccionar el tipo de cuentas permitido según la estrategia comercial.
+3. Añadir plataforma Web y cada redirect URI literal.
+4. Configurar `Calendars.Read` como permiso delegado.
+5. Conservar `offline_access`, `openid` y `email`.
+6. Crear un client secret con expiración y registrar su rotación.
+7. Guardar Application Client ID y secret solo en Vercel.
+8. Confirmar que PKCE permanece activo.
+9. Probar `nextLink`, `deltaLink`, recurrencia, eliminación y consentimiento
+   revocado con un tenant/cuenta de prueba.
+
+## Historial y rollback
+
+`202607230002_admin_control_center.sql` se conserva byte por byte porque ya fue
+aplicada remotamente. `003` es la migración aditiva de calendarios. No se
+reutilizan números ni se reescribe el historial.
+
+El rollback manual se encuentra en
+`supabase/rollbacks/202607230003_calendar_read_integrations.rollback.sql` y se
+niega a eliminar tablas si detecta cuentas o eventos.
