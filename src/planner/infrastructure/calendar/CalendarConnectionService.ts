@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BusyBlock } from '../../domain/entities/Planning'
+import { isoToZonedTime } from './calendarSyncDomain'
 
 export type CalendarProvider='google'|'outlook'
 export type CalendarConnection={id:string;provider:CalendarProvider;email:string;status:'active'|'expired'|'revoked'|'error'|'disconnected';scopes:string[];token_expires_at?:string;last_synced_at?:string;last_error?:string}
@@ -12,10 +13,10 @@ export class CalendarConnectionService {
     if(error)throw new Error(error.message)
     return (data??[]) as CalendarConnection[]
   }
-  async listEvents(from:string,until:string):Promise<BusyBlock[]>{
+  async listEvents(from:string,until:string,timezone=Intl.DateTimeFormat().resolvedOptions().timeZone):Promise<BusyBlock[]>{
     const {data,error}=await this.client.from('external_calendar_events').select('id,title,starts_at,ends_at,provider,external_event_id').lt('starts_at',until).gt('ends_at',from).eq('status','confirmed').order('starts_at')
     if(error)throw new Error(error.message)
-    return (data??[]).map(row=>({id:`${row.provider}:${row.external_event_id}`,title:row.title||'Ocupado',start:row.starts_at,end:row.ends_at,locked:true,kind:'event'}))
+    return (data??[]).map(row=>({id:`${row.provider}:${row.external_event_id}`,title:row.title||'Ocupado',start:isoToZonedTime(row.starts_at,timezone),end:isoToZonedTime(row.ends_at,timezone),locked:true,kind:'event'}))
   }
   async authorize(provider:CalendarProvider){
     const response=await this.call(`/api/${provider==='google'?'google':'microsoft'}-calendar-auth-start`)

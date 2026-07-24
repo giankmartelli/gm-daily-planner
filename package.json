@@ -14,6 +14,7 @@
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:e2e:remote": "node scripts/e2e-ai-remote.mjs",
     "audit:security": "node scripts/security-audit.mjs",
+    "audit:calendar": "node scripts/audit-calendar-secrets.mjs",
     "backup": "node scripts/backup-supabase.mjs",
     "preview": "vite preview"
   },
