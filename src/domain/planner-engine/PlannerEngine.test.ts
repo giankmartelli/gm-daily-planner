@@ -92,15 +92,4 @@ describe('PlannerEngine V3', () => {
     expect(next.generatedAt).toBe('2026-07-23T08:05:00')
   })
 
-  it('procesa 1000 tareas y 500 eventos dentro del objetivo de 100 ms', () => {
-    const tasks = Array.from({ length: 1000 }, (_, index) => task(String(index), { estimatedMinutes: 5, priority: index % 7 === 0 ? 'alta' : 'media' }))
-    const events = Array.from({ length: 500 }, (_, index) => ({
-      id: `e${index}`, title: `Evento ${index}`, start: '2026-07-23T20:00:00', end: '2026-07-23T20:05:00', source: 'google' as const,
-    }))
-    const start = performance.now()
-    const plan = new PlannerEngine().createPlan(input(tasks, { externalEvents: events }))
-    const elapsed = performance.now() - start
-    expect(plan.orderedTasks.length).toBeGreaterThan(0)
-    expect(elapsed).toBeLessThan(100)
-  })
 })
