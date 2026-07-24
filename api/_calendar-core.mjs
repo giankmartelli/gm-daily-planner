@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 
 const env = name => {
   const value=process.env[name]?.trim()
-  if(!value)throw new Error(`Falta la variable server-side ${name}`)
+  if(!value)throw Object.assign(new Error(`Integración no configurada: falta ${name}`),{status:503})
   return value
 }
 const baseUrl=()=>env('PUBLIC_SITE_URL').replace(/\/$/,'')
