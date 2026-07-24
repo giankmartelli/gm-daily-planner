@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:planner:coverage": "vitest run src/planner --coverage --coverage.include=src/planner/**/*.ts --coverage.exclude=src/planner/**/*.test.ts",
+    "test:planner-v3:coverage": "vitest run src/domain/planner-engine --coverage --coverage.include=src/domain/planner-engine/**/*.ts --coverage.exclude=src/domain/planner-engine/**/*.test.ts --coverage.exclude=src/domain/planner-engine/index.ts --coverage.thresholds.lines=95 --coverage.thresholds.functions=95 --coverage.thresholds.statements=95 --coverage.thresholds.branches=95",
     "test:ai:coverage": "vitest run src/core/ai --coverage --coverage.include=src/core/ai/**/*.ts --coverage.exclude=src/core/ai/**/*.test.ts --coverage.exclude=src/core/ai/features/**",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:e2e:remote": "node scripts/e2e-ai-remote.mjs",
