@@ -2,6 +2,8 @@
 
 Arquitectura: [GM Planner Intelligence Engine V3](docs/PLANNER_ENGINE_V3.md).
 
+Optimización: [GM Planner Optimization Engine V4](docs/PLANNER_OPTIMIZER_V4.md).
+
 Aplicación de productividad creada con React, TypeScript y Vite. Funciona en modo local sin cuenta y, al configurar Supabase, ofrece autenticación, persistencia multiusuario, sincronización en tiempo real y aislamiento mediante Row Level Security (RLS).
 
 ## Requisitos
